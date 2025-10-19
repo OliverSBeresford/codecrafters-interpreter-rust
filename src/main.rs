@@ -14,7 +14,6 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
             writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
 
             let file_contents = match fs::read_to_string(filename) {
@@ -31,8 +30,9 @@ fn main() {
                     ')' => println!("RIGHT_PAREN ) null"),
                     _ => { /* Ignore other characters for now */ }
                 });
+                println!("EOF  null"); // Add EOF here
             } else {
-                println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
+                println!("EOF  null");
             }
         }
         _ => {
