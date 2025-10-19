@@ -31,6 +31,7 @@ fn main() {
                     ')' => println!("RIGHT_PAREN ) null"),
                     _ => { /* Ignore other characters for now */ }
                 });
+                println!("EOF  null");
             } else {
                 println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
             }
