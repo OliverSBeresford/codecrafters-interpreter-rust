@@ -55,6 +55,9 @@ impl<'a> Scanner<'a> {
         while self.peek().is_some() {
             self.scan_token();
         }
+        // Add EOF token at the end
+        self.begin_token();
+        self.make_token(TokenType::Eof, None);
     }
 
     fn scan_token(&mut self) {

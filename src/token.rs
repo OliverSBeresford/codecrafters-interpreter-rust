@@ -14,6 +14,7 @@ pub enum TokenType {
     Semicolon,
     Slash,
     Star,
+    Eof,
     // Literals
     String,
     Number,
@@ -53,6 +54,7 @@ impl fmt::Display for TokenType {
             TokenType::Greater => "GREATER",
             TokenType::GreaterEqual => "GREATER_EQUAL",
             TokenType::Number => "NUMBER",
+            TokenType::Eof => "EOF",
         };
         f.write_str(s)
     }
