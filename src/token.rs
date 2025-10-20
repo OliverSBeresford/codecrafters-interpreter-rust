@@ -27,6 +27,8 @@ pub enum TokenType {
     LessEqual,
     Greater,
     GreaterEqual,
+    // Identifiers
+    Identifier,
 }
 
 impl fmt::Display for TokenType {
@@ -55,6 +57,7 @@ impl fmt::Display for TokenType {
             TokenType::GreaterEqual => "GREATER_EQUAL",
             TokenType::Number => "NUMBER",
             TokenType::Eof => "EOF",
+            TokenType::Identifier => "IDENTIFIER",
         };
         f.write_str(s)
     }

@@ -145,12 +145,33 @@ impl<'a> Scanner<'a> {
                 self.scan_number();
             }
 
+            // Identifiers
+            c if c.is_alphabetic() || c == '_' => {
+                self.scan_identifier();
+            }
+
             // unexpected characters
             other => {
                 eprintln!("[line {}] ERROR: Unexpected character: {}", self.line, other);
                 self.lexical_error = true;
             }
         };
+    }
+
+    // Method to scan identifiers
+    fn scan_identifier(&mut self) {
+        // Look ahead to consume all alphanumeric characters
+        while let Some(next_char) = self.peek() {
+            if next_char.is_alphanumeric() || next_char == '_' {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        self.make_token(
+            TokenType::Identifier,
+            None,
+        );
     }
 
     // Method to scan number literals
