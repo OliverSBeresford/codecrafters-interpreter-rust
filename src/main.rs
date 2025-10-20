@@ -33,6 +33,7 @@ fn main() {
 
             let mut scanner = Scanner::new(&file_contents);
             scanner.scan_tokens();
+            print!("{}", scanner.tokens);
             let lexical_error = scanner.had_error();
 
             if lexical_error {

@@ -1,9 +1,29 @@
 use std::iter::Peekable;
 use std::str::CharIndices;
+use std::fmt;
 
 use crate::token::Token;
 use crate::token::TokenType;
 use crate::token::Literal;
+
+pub struct TokenArray<'a> {
+    pub tokens: Vec<Token<'a>>,
+}
+
+impl<'a> TokenArray<'a> {
+    pub fn push(&mut self, token: Token<'a>) {
+        self.tokens.push(token);
+    }
+}
+
+impl fmt::Display for TokenArray<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for token in &self.tokens {
+            writeln!(f, "{}", token)?;
+        }
+        Ok(())
+    }
+}
 
 pub struct Scanner<'a> {
     input: &'a str,
@@ -12,7 +32,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     lexical_error: bool,
-    pub tokens: Vec<Token<'a>>,
+    pub tokens: TokenArray<'a>,
 }
 
 impl<'a> Scanner<'a> {
@@ -24,7 +44,7 @@ impl<'a> Scanner<'a> {
             start: 0,
             current: 0,
             lexical_error: false,
-            tokens: Vec::new(),
+            tokens: TokenArray { tokens: Vec::new() },
         }
     }
 
@@ -47,7 +67,6 @@ impl<'a> Scanner<'a> {
     fn make_token(&mut self, token_type: TokenType, literal: Option<Literal>) {
         let lexeme = &self.input[self.start..self.current];
         let token = Token::new(token_type, lexeme, literal, self.line);
-        println!("{}", &token);
         self.tokens.push(token);
     }
 
