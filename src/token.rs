@@ -16,6 +16,7 @@ pub enum TokenType {
     Star,
     // Literals
     String,
+    Number,
     // One or two character tokens.
     Equal,
     EqualEqual,
@@ -51,6 +52,7 @@ impl fmt::Display for TokenType {
             TokenType::LessEqual => "LESS_EQUAL",
             TokenType::Greater => "GREATER",
             TokenType::GreaterEqual => "GREATER_EQUAL",
+            TokenType::Number => "NUMBER",
         };
         f.write_str(s)
     }
