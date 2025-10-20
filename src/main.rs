@@ -31,6 +31,14 @@ fn main() {
                     ')' => println!("RIGHT_PAREN ) null"),
                     '{' => println!("LEFT_BRACE {{ null"),
                     '}' => println!("RIGHT_BRACE }} null"),
+                    ',' => println!("COMMA , null"),
+                    '.' => println!("DOT . null"),
+                    '-' => println!("MINUS - null"),
+                    '+' => println!("PLUS + null"),
+                    ';' => println!("SEMICOLON ; null"),
+                    '*' => println!("STAR * null"),
+                    '/' => println!("SLASH / null"),
+                    '$' | '#' => {eprintln!("[line 1] ERROR: Unexpected character: {}", c); std::process::exit(65);},
                     _ => { /* Ignore other characters for now */ }
                 });
                 println!("EOF  null");
