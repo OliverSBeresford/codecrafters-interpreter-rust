@@ -74,15 +74,15 @@ impl fmt::Display for Literal {
 }
 
 #[derive(Debug)]
-pub struct Token {
+pub struct Token<'a> {
     pub token_type: TokenType,
-    pub lexeme: String,
+    pub lexeme: &'a str,
     pub literal: Option<Literal>,
     pub line: usize,
 }
 
-impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, literal: Option<Literal>, line: usize) -> Self {
+impl<'a> Token<'a> {
+    pub fn new(token_type: TokenType, lexeme: &'a str, literal: Option<Literal>, line: usize) -> Self {
         Self {
             token_type,
             lexeme,
@@ -93,7 +93,7 @@ impl Token {
 }
 
 // implement Display for Token so format!("{}", token) or token.to_string() works
-impl fmt::Display for Token {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.literal {
             Some(lit) => write!(f, "{} {} {}", self.token_type, self.lexeme, lit),
