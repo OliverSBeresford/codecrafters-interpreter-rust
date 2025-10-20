@@ -71,7 +71,15 @@ impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Literal::String(s) => f.write_str(s),
-            Literal::Number(n) => write!(f, "{}", n),
+            Literal::Number(n) => {
+                // If the value is an integer (no fractional part) print one decimal place
+                // Otherwise print the float normally.
+                if n.fract() == 0.0 {
+                    write!(f, "{:.1}", n)
+                } else {
+                    write!(f, "{}", n)
+                }
+            }
             Literal::Boolean(b) => write!(f, "{}", b),
         }
     }
