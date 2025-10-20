@@ -12,7 +12,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     lexical_error: bool,
-    tokens: Vec<Token<'a>>,
+    pub tokens: Vec<Token<'a>>,
 }
 
 impl<'a> Scanner<'a> {
@@ -59,88 +59,117 @@ impl<'a> Scanner<'a> {
 
     fn scan_token(&mut self) {
         self.begin_token();
-        if let Some(c) = self.advance() {
-            match c {
-                // Multi-char tokens
-                '=' => {
-                    if self.peek() == Some('=') {
-                        self.advance();
-                        self.make_token(TokenType::EqualEqual, None);
-                    } else {
-                        self.make_token(TokenType::Equal, None);
-                    }
-                }
-                '!' => {
-                    if self.peek() == Some('=') {
-                        self.advance();
-                        self.make_token(TokenType::BangEqual, None);
-                    } else {
-                        self.make_token(TokenType::Bang, None);
-                    }
-                }
-                '<' => {
-                    if self.peek() == Some('=') {
-                        self.advance();
-                        self.make_token(TokenType::LessEqual, None);
-                    } else {
-                        self.make_token(TokenType::Less, None);
-                    }
-                }
-                '>' => {
-                    if self.peek() == Some('=') {
-                        self.advance();
-                        self.make_token(TokenType::GreaterEqual, None);
-                    } else {
-                        self.make_token(TokenType::Greater, None);
-                    }
-                }
 
-                // Single-char tokens
-                '(' => self.make_token(TokenType::LeftParen, None),
-                ')' => self.make_token(TokenType::RightParen, None),
-                '{' => self.make_token(TokenType::LeftBrace, None),
-                '}' => self.make_token(TokenType::RightBrace, None),
-                ',' => self.make_token(TokenType::Comma, None),
-                '.' => self.make_token(TokenType::Dot, None),
-                '-' => self.make_token(TokenType::Minus, None),
-                '+' => self.make_token(TokenType::Plus, None),
-                ';' => self.make_token(TokenType::Semicolon, None),
-                '*' => self.make_token(TokenType::Star, None),
+        // Make sure there's a character to process
+        let c = self.advance();
+        if c.is_none() {
+            return;
+        };
+        let c = c.unwrap();
 
-                // whitespace & newlines
-                '\n' => {
-                    self.line += 1;
+        match c {
+            // Multi-char tokens
+            '=' => {
+                if self.peek() == Some('=') {
+                    self.advance();
+                    self.make_token(TokenType::EqualEqual, None);
+                } else {
+                    self.make_token(TokenType::Equal, None);
                 }
-                c if c.is_whitespace() => { /* skip other whitespace */ }
+            }
+            '!' => {
+                if self.peek() == Some('=') {
+                    self.advance();
+                    self.make_token(TokenType::BangEqual, None);
+                } else {
+                    self.make_token(TokenType::Bang, None);
+                }
+            }
+            '<' => {
+                if self.peek() == Some('=') {
+                    self.advance();
+                    self.make_token(TokenType::LessEqual, None);
+                } else {
+                    self.make_token(TokenType::Less, None);
+                }
+            }
+            '>' => {
+                if self.peek() == Some('=') {
+                    self.advance();
+                    self.make_token(TokenType::GreaterEqual, None);
+                } else {
+                    self.make_token(TokenType::Greater, None);
+                }
+            }
 
-                // Comments and division
-                '/' => {
-                    if self.peek() == Some('/') {
-                        // consume rest of line
-                        while let Some(&(_, next_char)) = self.chars.peek() {
-                            if next_char == '\n' {
-                                break;
-                            }
-                            self.advance();
+            // Single-char tokens
+            '(' => self.make_token(TokenType::LeftParen, None),
+            ')' => self.make_token(TokenType::RightParen, None),
+            '{' => self.make_token(TokenType::LeftBrace, None),
+            '}' => self.make_token(TokenType::RightBrace, None),
+            ',' => self.make_token(TokenType::Comma, None),
+            '.' => self.make_token(TokenType::Dot, None),
+            '-' => self.make_token(TokenType::Minus, None),
+            '+' => self.make_token(TokenType::Plus, None),
+            ';' => self.make_token(TokenType::Semicolon, None),
+            '*' => self.make_token(TokenType::Star, None),
+
+            // whitespace & newlines
+            '\n' => {
+                self.line += 1;
+            }
+            c if c.is_whitespace() => { /* skip other whitespace */ }
+
+            // Comments and division
+            '/' => {
+                if self.peek() == Some('/') {
+                    // consume rest of line
+                    while let Some(&(_, next_char)) = self.chars.peek() {
+                        if next_char == '\n' {
+                            break;
                         }
-                    } else {
-                        self.make_token(TokenType::Slash, None);
+                        self.advance();
                     }
+                } else {
+                    self.make_token(TokenType::Slash, None);
                 }
-                // string literals
-                '"' => {
-                    self.scan_string();
-                }
+            }
+            // Literals
+            '"' => {
+                self.scan_string();
+            }
+            c if c.is_digit(10) => {
+                self.scan_number();
+            }
 
-                // unexpected characters
-                other => {
-                    eprintln!("[line {}] ERROR: Unexpected character: {}", self.line, other);
-                    self.lexical_error = true;
-                }
-            };
-        }
+            // unexpected characters
+            other => {
+                eprintln!("[line {}] ERROR: Unexpected character: {}", self.line, other);
+                self.lexical_error = true;
+            }
+        };
     }
 
+    // Method to scan number literals
+    fn scan_number(&mut self) {
+        // Look ahead to consume all digits
+        while let Some(next_char) = self.peek() {
+            if next_char.is_digit(10) || next_char == '.' {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        let number_literal: f64 = self.input[self.start..self.current]
+            .parse()
+            .expect("Failed to parse number literal");
+        self.make_token(
+            TokenType::Number,
+            Some(Literal::Number(number_literal)),
+        );
+    }
+
+    // Method to scan string literals
     fn scan_string(&mut self) {
         // Consume the opening quote
         self.advance();
