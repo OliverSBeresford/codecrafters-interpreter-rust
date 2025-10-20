@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::iter::Peekable;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -25,28 +26,50 @@ fn main() {
             if file_contents.is_empty() {
                 println!("EOF  null");
                 return;
-            } 
+            }
 
             let mut lexical_error = false;
+            let mut line: usize = 1;
+            let mut chars: Peekable<std::str::Chars<'_>> = file_contents.chars().peekable();
 
-            file_contents.chars().for_each(|c: char| match c {
-                '(' => println!("LEFT_PAREN ( null"),
-                ')' => println!("RIGHT_PAREN ) null"),
-                '{' => println!("LEFT_BRACE {{ null"),
-                '}' => println!("RIGHT_BRACE }} null"),
-                ',' => println!("COMMA , null"),
-                '.' => println!("DOT . null"),
-                '-' => println!("MINUS - null"),
-                '+' => println!("PLUS + null"),
-                ';' => println!("SEMICOLON ; null"),
-                '*' => println!("STAR * null"),
-                '/' => println!("SLASH / null"),
-                '$' | '#' => {
-                    eprintln!("[line 1] ERROR: Unexpected character: {}", c);
-                    lexical_error = true;
-                },
-                _ => { /* Ignore other characters for now */ }
-            });
+            while let Some(c) = chars.next() {
+                match c {
+                    // Multi-char token: ==
+                    '=' => {
+                        if chars.peek() == Some(&'=') {
+                            chars.next();
+                            println!("EQUAL_EQUAL == null");
+                        } else {
+                            println!("EQUAL = null");
+                        }
+                    },
+                    '(' => println!("LEFT_PAREN ( null"),
+                    ')' => println!("RIGHT_PAREN ) null"),
+                    '{' => println!("LEFT_BRACE {{ null"),
+                    '}' => println!("RIGHT_BRACE }} null"),
+                    ',' => println!("COMMA , null"),
+                    '.' => println!("DOT . null"),
+                    '-' => println!("MINUS - null"),
+                    '+' => println!("PLUS + null"),
+                    ';' => println!("SEMICOLON ; null"),
+                    '*' => println!("STAR * null"),
+                    '/' => println!("SLASH / null"),
+
+                    // whitespace & newlines
+                    '\n' => {
+                        line += 1;
+                    }
+                    c if c.is_whitespace() => { /* skip other whitespace */ }
+
+                    '$' | '#' => {
+                        eprintln!("[line {}] ERROR: Unexpected character: {}", line, c);
+                        lexical_error = true;
+                    }
+
+                    _ => { /* ignore other characters for now */ }
+                }
+            }
+
             println!("EOF  null");
 
             if lexical_error {
