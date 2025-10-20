@@ -34,7 +34,7 @@ fn main() {
 
             while let Some(c) = chars.next() {
                 match c {
-                    // Multi-char token: ==
+                    // Multi-char tokens
                     '=' => {
                         if chars.peek() == Some(&'=') {
                             chars.next();
@@ -43,6 +43,15 @@ fn main() {
                             println!("EQUAL = null");
                         }
                     },
+                    '!' => {
+                        if chars.peek() == Some(&'=') {
+                            chars.next();
+                            println!("BANG_EQUAL != null");
+                        } else {
+                            println!("BANG ! null");
+                        }
+                    },
+                    // Single-char tokens
                     '(' => println!("LEFT_PAREN ( null"),
                     ')' => println!("RIGHT_PAREN ) null"),
                     '{' => println!("LEFT_BRACE {{ null"),
