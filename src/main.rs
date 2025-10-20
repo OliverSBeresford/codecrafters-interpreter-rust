@@ -14,9 +14,6 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
-            writeln!(io::stderr(), "Logs from your program will appear here!").unwrap();
-
             let file_contents = match fs::read_to_string(filename) {
                 Ok(file_string) => file_string,
                 Err(error_message) => {
@@ -25,28 +22,35 @@ fn main() {
                 }
             };
 
-            if !file_contents.is_empty() {
-                file_contents.chars().for_each(|c| match c {
-                    '(' => println!("LEFT_PAREN ( null"),
-                    ')' => println!("RIGHT_PAREN ) null"),
-                    '{' => println!("LEFT_BRACE {{ null"),
-                    '}' => println!("RIGHT_BRACE }} null"),
-                    ',' => println!("COMMA , null"),
-                    '.' => println!("DOT . null"),
-                    '-' => println!("MINUS - null"),
-                    '+' => println!("PLUS + null"),
-                    ';' => println!("SEMICOLON ; null"),
-                    '*' => println!("STAR * null"),
-                    '/' => println!("SLASH / null"),
-                    '$' | '#' => {
-                        eprintln!("[line 1] ERROR: Unexpected character: {}", c);
-                        std::process::exit(65);
-                    },
-                    _ => { /* Ignore other characters for now */ }
-                });
+            if file_contents.is_empty() {
                 println!("EOF  null");
-            } else {
-                println!("EOF  null"); // Placeholder, replace this line when implementing the scanner
+                return;
+            } 
+
+            let mut lexical_error = false;
+
+            file_contents.chars().for_each(|c: char| match c {
+                '(' => println!("LEFT_PAREN ( null"),
+                ')' => println!("RIGHT_PAREN ) null"),
+                '{' => println!("LEFT_BRACE {{ null"),
+                '}' => println!("RIGHT_BRACE }} null"),
+                ',' => println!("COMMA , null"),
+                '.' => println!("DOT . null"),
+                '-' => println!("MINUS - null"),
+                '+' => println!("PLUS + null"),
+                ';' => println!("SEMICOLON ; null"),
+                '*' => println!("STAR * null"),
+                '/' => println!("SLASH / null"),
+                '$' | '#' => {
+                    eprintln!("[line 1] ERROR: Unexpected character: {}", c);
+                    lexical_error = true;
+                },
+                _ => { /* Ignore other characters for now */ }
+            });
+            println!("EOF  null");
+
+            if lexical_error {
+                std::process::exit(65);
             }
         }
         _ => {
