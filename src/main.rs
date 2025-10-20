@@ -38,7 +38,10 @@ fn main() {
                     ';' => println!("SEMICOLON ; null"),
                     '*' => println!("STAR * null"),
                     '/' => println!("SLASH / null"),
-                    '$' | '#' => {eprintln!("[line 1] ERROR: Unexpected character: {}", c); std::process::exit(65);},
+                    '$' | '#' => {
+                        eprintln!("[line 1] ERROR: Unexpected character: {}", c);
+                        std::process::exit(65);
+                    },
                     _ => { /* Ignore other characters for now */ }
                 });
                 println!("EOF  null");
