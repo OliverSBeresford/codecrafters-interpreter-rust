@@ -177,7 +177,7 @@ impl<'a> Scanner<'a> {
 
             // unexpected characters
             other => {
-                eprintln!("[line {}] ERROR: Unexpected character: {}", self.line, other);
+                eprintln!("[line {}] Error: Unexpected character: {}", self.line, other);
                 self.lexical_error = true;
             }
         };
