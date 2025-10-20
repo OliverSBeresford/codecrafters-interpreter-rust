@@ -78,14 +78,27 @@ fn main() {
                     '+' => println!("PLUS + null"),
                     ';' => println!("SEMICOLON ; null"),
                     '*' => println!("STAR * null"),
-                    '/' => println!("SLASH / null"),
 
                     // whitespace & newlines
                     '\n' => {
                         line += 1;
                     }
                     c if c.is_whitespace() => { /* skip other whitespace */ }
-
+                    // Comments and division
+                    '/' => {
+                        if chars.peek() == Some(&'/') {
+                            // consume rest of line
+                            while let Some(next_char) = chars.peek() {
+                                if next_char == &'\n' {
+                                    break;
+                                }
+                                chars.next();
+                            }
+                        } else {
+                            println!("SLASH / null");
+                        }
+                    },
+                    // unexpected characters
                     '$' | '#' => {
                         eprintln!("[line {}] ERROR: Unexpected character: {}", line, c);
                         lexical_error = true;
