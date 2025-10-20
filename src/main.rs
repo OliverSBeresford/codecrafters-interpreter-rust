@@ -1,7 +1,10 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use std::iter::Peekable;
+
+mod scanner;
+mod token;
+use scanner::Scanner;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -28,87 +31,9 @@ fn main() {
                 return;
             }
 
-            let mut lexical_error = false;
-            let mut line: usize = 1;
-            let mut chars: Peekable<std::str::Chars<'_>> = file_contents.chars().peekable();
-
-            while let Some(c) = chars.next() {
-                match c {
-                    // Multi-char tokens
-                    '=' => {
-                        if chars.peek() == Some(&'=') {
-                            chars.next();
-                            println!("EQUAL_EQUAL == null");
-                        } else {
-                            println!("EQUAL = null");
-                        }
-                    },
-                    '!' => {
-                        if chars.peek() == Some(&'=') {
-                            chars.next();
-                            println!("BANG_EQUAL != null");
-                        } else {
-                            println!("BANG ! null");
-                        }
-                    },
-                    '<' => {
-                        if chars.peek() == Some(&'=') {
-                            chars.next();
-                            println!("LESS_EQUAL <= null");
-                        } else {
-                            println!("LESS < null");
-                        }
-                    },
-                    '>' => {
-                        if chars.peek() == Some(&'=') {
-                            chars.next();
-                            println!("GREATER_EQUAL >= null");
-                        } else {
-                            println!("GREATER > null");
-                        }
-                    },
-                    // Single-char tokens
-                    '(' => println!("LEFT_PAREN ( null"),
-                    ')' => println!("RIGHT_PAREN ) null"),
-                    '{' => println!("LEFT_BRACE {{ null"),
-                    '}' => println!("RIGHT_BRACE }} null"),
-                    ',' => println!("COMMA , null"),
-                    '.' => println!("DOT . null"),
-                    '-' => println!("MINUS - null"),
-                    '+' => println!("PLUS + null"),
-                    ';' => println!("SEMICOLON ; null"),
-                    '*' => println!("STAR * null"),
-
-                    // whitespace & newlines
-                    '\n' => {
-                        line += 1;
-                    }
-                    c if c.is_whitespace() => { /* skip other whitespace */ }
-                    // Comments and division
-                    '/' => {
-                        if chars.peek() == Some(&'/') {
-                            // consume rest of line
-                            while let Some(next_char) = chars.peek() {
-                                if next_char == &'\n' {
-                                    break;
-                                }
-                                chars.next();
-                            }
-                        } else {
-                            println!("SLASH / null");
-                        }
-                    },
-                    // unexpected characters
-                    '$' | '#' => {
-                        eprintln!("[line {}] ERROR: Unexpected character: {}", line, c);
-                        lexical_error = true;
-                    }
-
-                    _ => { /* ignore other characters for now */ }
-                }
-            }
-
-            println!("EOF  null");
+            let mut scanner = Scanner::new(&file_contents);
+            scanner.scan_tokens();
+            let lexical_error = scanner.had_error();
 
             if lexical_error {
                 std::process::exit(65);
