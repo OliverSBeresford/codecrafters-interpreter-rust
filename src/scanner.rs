@@ -239,7 +239,7 @@ impl<'a> Scanner<'a> {
         }
 
         // If we reach the end of the input without finding a closing quote, it's an error
-        eprintln!("[line {}] ERROR: Unterminated string.", self.line);
+        eprintln!("[line {}] Error: Unterminated string.", self.line);
         self.lexical_error = true;
     }
 
