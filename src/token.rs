@@ -1,4 +1,52 @@
+use phf::phf_map;
 use std::fmt;
+use heck::ToShoutySnakeCase;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Keyword {
+    And,
+    Class,
+    Else,
+    False,
+    For,
+    Fun,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
+}
+
+// static perfect-hash map from string -> Keyword
+static KEYWORDS: phf::Map<&'static str, Keyword> = phf_map! {
+    "and" => Keyword::And,
+    "class" => Keyword::Class,
+    "else" => Keyword::Else,
+    "false" => Keyword::False,
+    "for" => Keyword::For,
+    "fun" => Keyword::Fun,
+    "if" => Keyword::If,
+    "nil" => Keyword::Nil,
+    "or" => Keyword::Or,
+    "print" => Keyword::Print,
+    "return" => Keyword::Return,
+    "super" => Keyword::Super,
+    "this" => Keyword::This,
+    "true" => Keyword::True,
+    "var" => Keyword::Var,
+    "while" => Keyword::While,
+};
+
+impl Keyword {
+    pub fn from_str(s: &str) -> Option<Keyword> {
+        KEYWORDS.get(s).copied()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -29,37 +77,20 @@ pub enum TokenType {
     GreaterEqual,
     // Identifiers
     Identifier,
+    // Keywords
+    Keyword(Keyword),
 }
 
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // return a &'static str to avoid allocating a String each time
-        let s: &'static str = match self {
-            TokenType::LeftBrace => "LEFT_BRACE",
-            TokenType::RightBrace => "RIGHT_BRACE",
-            TokenType::LeftParen => "LEFT_PAREN",
-            TokenType::RightParen => "RIGHT_PAREN",
-            TokenType::Comma => "COMMA",
-            TokenType::Dot => "DOT",
-            TokenType::Minus => "MINUS",
-            TokenType::Plus => "PLUS",
-            TokenType::Semicolon => "SEMICOLON",
-            TokenType::Slash => "SLASH",
-            TokenType::Star => "STAR",
-            TokenType::String => "STRING",
-            TokenType::Equal => "EQUAL",
-            TokenType::EqualEqual => "EQUAL_EQUAL",
-            TokenType::Bang => "BANG",
-            TokenType::BangEqual => "BANG_EQUAL",
-            TokenType::Less => "LESS",
-            TokenType::LessEqual => "LESS_EQUAL",
-            TokenType::Greater => "GREATER",
-            TokenType::GreaterEqual => "GREATER_EQUAL",
-            TokenType::Number => "NUMBER",
-            TokenType::Eof => "EOF",
-            TokenType::Identifier => "IDENTIFIER",
+        // For Keyword(kw) we want "AND"/"CLASS"/etc.  For other variants rely on Debug name.
+        // format!("{:?}", ...) produces "LeftBrace", "Number", etc. Converting that to
+        // shouty snake yields "LEFT_BRACE", "NUMBER", ...
+        let out = match self {
+            TokenType::Keyword(kw) => format!("{:?}", kw).to_shouty_snake_case(),
+            _ => format!("{:?}", self).to_shouty_snake_case(),
         };
-        f.write_str(s)
+        f.write_str(&out)
     }
 }
 

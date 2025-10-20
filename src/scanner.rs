@@ -5,6 +5,7 @@ use std::fmt;
 use crate::token::Token;
 use crate::token::TokenType;
 use crate::token::Literal;
+use crate::token::Keyword;
 
 pub struct TokenArray<'a> {
     pub tokens: Vec<Token<'a>>,
@@ -63,9 +64,14 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    // Get the current lexeme being scanned
+    fn get_lexeme(&self) -> &'a str {
+        &self.input[self.start..self.current]
+    }
+
     // Create a new token and add it to the tokens vector
     fn make_token(&mut self, token_type: TokenType, literal: Option<Literal>) {
-        let lexeme = &self.input[self.start..self.current];
+        let lexeme = self.get_lexeme();
         let token = Token::new(token_type, lexeme, literal, self.line);
         self.tokens.push(token);
     }
@@ -166,7 +172,7 @@ impl<'a> Scanner<'a> {
 
             // Identifiers
             c if c.is_alphabetic() || c == '_' => {
-                self.scan_identifier();
+                self.scan_word();
             }
 
             // unexpected characters
@@ -177,8 +183,8 @@ impl<'a> Scanner<'a> {
         };
     }
 
-    // Method to scan identifiers
-    fn scan_identifier(&mut self) {
+    // Method to scan words (identifiers and keywords)
+    fn scan_word(&mut self) {
         // Look ahead to consume all alphanumeric characters
         while let Some(next_char) = self.peek() {
             if next_char.is_alphanumeric() || next_char == '_' {
@@ -187,8 +193,14 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
+        let lexeme = self.get_lexeme();
+        let token_type = if let Some(keyword) = Keyword::from_str(lexeme) {
+            TokenType::Keyword(keyword)
+        } else {
+            TokenType::Identifier
+        };
         self.make_token(
-            TokenType::Identifier,
+            token_type,
             None,
         );
     }
@@ -203,7 +215,7 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
-        let number_literal: f64 = self.input[self.start..self.current]
+        let number_literal: f64 = self.get_lexeme()
             .parse()
             .expect("Failed to parse number literal");
         self.make_token(
