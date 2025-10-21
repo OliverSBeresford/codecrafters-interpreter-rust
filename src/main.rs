@@ -4,7 +4,10 @@ use std::io::{self, Write};
 
 mod scanner;
 mod token;
+mod ast;
+
 use scanner::Scanner;
+use ast::print_example;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -39,6 +42,10 @@ fn main() {
             if lexical_error {
                 std::process::exit(65);
             }
+        }
+        "parse" => {
+            // Parsing functionality would go here
+            print_example();
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
