@@ -119,7 +119,7 @@ impl fmt::Display for Literal {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub lexeme: &'a str,
