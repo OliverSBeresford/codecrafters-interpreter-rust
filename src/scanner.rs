@@ -26,7 +26,20 @@ impl fmt::Display for TokenArray<'_> {
     }
 }
 
-pub struct Scanner<'a> {
+pub fn scan<'a>(input: &'a str) -> Result<TokenArray<'a>, ()> {
+    let mut scanner = Scanner::new(input);
+    scanner.scan_tokens();
+
+    // Check for lexical errors, then return tokens
+    if scanner.had_error() {
+        // For now, still print tokens even if there was an error
+        print!("{}", scanner.tokens);
+        return Err(());
+    }
+    return Ok(scanner.tokens);
+}
+
+struct Scanner<'a> {
     input: &'a str,
     chars: Peekable<CharIndices<'a>>,
     line: usize,
@@ -76,7 +89,7 @@ impl<'a> Scanner<'a> {
         self.tokens.push(token);
     }
 
-    pub fn scan_tokens(&mut self) {
+    fn scan_tokens(&mut self) {
         while self.peek().is_some() {
             self.scan_token();
         }
@@ -247,7 +260,7 @@ impl<'a> Scanner<'a> {
         self.chars.peek().map(|&(_, ch)| ch)
     }
 
-    pub fn had_error(&self) -> bool {
+    fn had_error(&self) -> bool {
         self.lexical_error
     }
 }

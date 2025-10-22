@@ -6,7 +6,7 @@ mod scanner;
 mod token;
 mod ast;
 
-use scanner::Scanner;
+use scanner::scan;
 use ast::print_example;
 
 fn main() {
@@ -34,14 +34,11 @@ fn main() {
                 return;
             }
 
-            let mut scanner = Scanner::new(&file_contents);
-            scanner.scan_tokens();
-            print!("{}", scanner.tokens);
-            let lexical_error = scanner.had_error();
-
-            if lexical_error {
+            let tokens = scan(&file_contents).unwrap_or_else(|_| {
                 std::process::exit(65);
-            }
+            });
+
+            print!("{}", tokens);
         }
         "parse" => {
             // Parsing functionality would go here
