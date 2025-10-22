@@ -85,6 +85,7 @@ impl<'a> Parser<'a> {
         return Some(expr);
     }
 
+    // A comparison is a term followed by zero or more <, >, <=, >=, each followed by a term, like 1 < 2 >= 3
     fn comparison(&mut self) -> Option<Expr<'a>> {
         // Create the left-hand side expression (can be a term or above)
         let mut expr = self.term().unwrap();
@@ -104,6 +105,7 @@ impl<'a> Parser<'a> {
         return Some(expr);
     }
 
+    // A term is a factor followed by zero or more + or -, each followed by a factor, like 1 + 2 - 3
     fn term(&mut self) -> Option<Expr<'a>> {
         // Create the left-hand side expression (can be a factor or above)
         let mut expr = self.factor().unwrap();
