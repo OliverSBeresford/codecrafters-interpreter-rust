@@ -8,7 +8,7 @@ mod ast;
 mod parse;
 
 use scanner::scan;
-use ast::print_example;
+use ast::ExprNode;
 use parse::Parser;
 
 fn main() {
@@ -21,21 +21,22 @@ fn main() {
     let command = &args[1];
     let filename = &args[2];
 
+    let file_contents = match fs::read_to_string(filename) {
+        Ok(file_string) => file_string,
+        Err(error_message) => {
+            eprintln!("Failed to read file {}: {}", filename, error_message);
+            std::process::exit(1);
+        }
+    };
+
     match command.as_str() {
         "tokenize" => {
-            let file_contents = match fs::read_to_string(filename) {
-                Ok(file_string) => file_string,
-                Err(error_message) => {
-                    eprintln!("Failed to read file {}: {}", filename, error_message);
-                    std::process::exit(1);
-                }
-            };
-
             if file_contents.is_empty() {
                 println!("EOF  null");
                 return;
             }
-
+            
+            // Tokenize the input and print the tokens
             let tokens = scan(&file_contents).unwrap_or_else(|_| {
                 std::process::exit(65);
             });
@@ -43,8 +44,24 @@ fn main() {
             print!("{}", tokens);
         }
         "parse" => {
-            // Parsing functionality would go here
-            print_example();
+            // Get tokens from the scanner
+            let tokens = scan(&file_contents).unwrap_or_else(|_| {
+                std::process::exit(65);
+            });
+            
+            // Create a parser and parse the tokens into an AST
+            let mut parser = Parser::new(&tokens.tokens);
+            let expression = parser.expression();
+
+            // Print the AST using the visit method
+            match expression {
+                Some(expr) => {
+                    println!("{}", expr.visit());
+                }
+                None => {
+                    std::process::exit(65);
+                }
+            }
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

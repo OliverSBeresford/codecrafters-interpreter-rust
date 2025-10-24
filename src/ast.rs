@@ -1,8 +1,6 @@
 use crate::token::Token;
-use crate::token::TokenType;
-use crate::token::Literal;
 
-trait ExprNode {
+pub trait ExprNode {
     fn visit(&self) -> String;
 }
 
@@ -43,40 +41,4 @@ impl<'a> ExprNode for Expr<'a> {
             }
         }
     }
-}
-
-pub fn print_example() {
-    let expr = Expr::Binary {
-        left: Box::new(Expr::Unary {
-            operator: Token::new(
-                TokenType::Minus,
-                "-",
-                None,
-                1,
-            ),
-            right: Box::new(Expr::Literal {
-                value: Token::new(
-                    TokenType::Number,
-                    "123",
-                    Some(Literal::Number(123.0)),
-                    1,
-                ),
-            }),
-        }),
-        operator: Token::new(
-            TokenType::Star,
-            "*",
-            None,
-            1,
-        ),
-        right: Box::new(Expr::Grouping { expression: Box::new(Expr::Literal {
-            value: Token::new(
-                TokenType::Number,
-                "45.67",
-                Some(Literal::Number(45.67)),
-                1,
-            ),
-        })}),
-    };
-    println!("{}", expr.visit());
 }

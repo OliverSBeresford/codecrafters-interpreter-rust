@@ -1,8 +1,5 @@
-use std::thread::current;
-
 use crate::token::Token;
 use crate::token::TokenType;
-use crate::token::Literal;
 use crate::ast::Expr;
 use crate::token::Keyword::{Nil, False, True};
 
@@ -19,7 +16,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Advance the parser by one token and return it (with ownership)
+    // Return the current token and advance the parser
     fn advance(&mut self) -> Option<Token<'a>> {
         if self.current < self.tokens.len() {
             let token = self.tokens[self.current].clone();
@@ -30,22 +27,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Return the next token without consuming it
-    fn peek(&self) -> Option<&Token<'a>> {
-        return self.tokens.get(self.current + 1);
+    // Get the current token without advancing the parser
+    fn current_token(&self) -> Option<&Token<'a>> {
+        return self.tokens.get(self.current);
     }
 
-    // Check if the next token is of any of the expected types
+    // Check if the current token is of one of the expected types
     fn check(&self, expected: &[TokenType]) -> bool {
-        if let Some(token) = self.peek() {
+        if let Some(token) = self.current_token() {
             return expected.contains(&token.token_type);
         }
         return false;
-    }
-
-    // Return current token
-    fn current_token(&self) -> Option<&Token<'a>> {
-        return self.tokens.get(self.current);
     }
 
     // Consume a token of the expected type, or return an error
@@ -61,7 +53,7 @@ impl<'a> Parser<'a> {
         return current_token;
     }
 
-    fn expression(&mut self) -> Option<Expr<'a>> {
+    pub fn expression(&mut self) -> Option<Expr<'a>> {
         return self.equality();
     }
 
