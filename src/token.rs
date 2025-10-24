@@ -144,8 +144,8 @@ impl<'a> Token<'a> {
 impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.literal {
+            None | Some(Literal::Nil) => write!(f, "{} {} null", self.token_type, self.lexeme),
             Some(lit) => write!(f, "{} {} {}", self.token_type, self.lexeme, lit),
-            None => write!(f, "{} {} null", self.token_type, self.lexeme),
         }
     }
 }
