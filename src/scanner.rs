@@ -215,7 +215,7 @@ impl<'a> Scanner<'a> {
         let literal = match token_type {
             TokenType::Keyword(Keyword::True) => Some(Literal::Boolean(true)),
             TokenType::Keyword(Keyword::False) => Some(Literal::Boolean(false)),
-            TokenType::Keyword(Keyword::Nil) => None,
+            TokenType::Keyword(Keyword::Nil) => Some(Literal::Nil),
             _ => None,
         };
         self.make_token(

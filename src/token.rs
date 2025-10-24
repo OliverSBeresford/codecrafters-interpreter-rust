@@ -99,6 +99,7 @@ pub enum Literal {
     String(String),
     Number(f64),
     Boolean(bool),
+    Nil,
 }
 
 impl fmt::Display for Literal {
@@ -115,6 +116,7 @@ impl fmt::Display for Literal {
                 }
             }
             Literal::Boolean(b) => write!(f, "{}", b),
+            Literal::Nil => write!(f, "nil"),
         }
     }
 }
