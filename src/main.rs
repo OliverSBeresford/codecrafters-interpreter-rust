@@ -5,9 +5,11 @@ use std::io::{self, Write};
 mod scanner;
 mod token;
 mod ast;
+mod parse;
 
 use scanner::scan;
 use ast::print_example;
+use parse::Parser;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
