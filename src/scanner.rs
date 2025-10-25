@@ -32,8 +32,6 @@ pub fn scan<'a>(input: &'a str) -> Result<TokenArray<'a>, ()> {
 
     // Check for lexical errors, then return tokens
     if scanner.had_error() {
-        // For now, still print tokens even if there was an error
-        print!("{}", scanner.tokens);
         return Err(());
     }
     return Ok(scanner.tokens);
