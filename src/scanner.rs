@@ -95,9 +95,7 @@ impl<'a> Scanner<'a> {
         }
         // Add EOF token at the end
         self.begin_token();
-        if !self.had_error() {
-            self.make_token(TokenType::Eof, None);
-        }
+        self.make_token(TokenType::Eof, None);
     }
 
     fn scan_token(&mut self) {
