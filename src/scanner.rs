@@ -94,8 +94,8 @@ impl<'a> Scanner<'a> {
             self.scan_token();
         }
         // Add EOF token at the end
-        if self.tokens.tokens.len() > 0 {
-            self.begin_token();
+        self.begin_token();
+        if !self.had_error() {
             self.make_token(TokenType::Eof, None);
         }
     }
