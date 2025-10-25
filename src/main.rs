@@ -35,12 +35,13 @@ fn main() {
                 println!("EOF  null");
                 return;
             }
-            
+
+            let tokens = scan(&file_contents);
             // Tokenize the input and print the tokens, regardless of lexical errors
-            if let Ok(tokens) = scan(&file_contents) {
+            if let Ok(tokens) = tokens {
                 print!("{}", tokens);
                 return;
-            } else if let Err(tokens) = scan(&file_contents) {
+            } else if let Err(tokens) = tokens {
                 print!("{}", tokens);
                 std::process::exit(65);
             }
