@@ -26,13 +26,13 @@ impl fmt::Display for TokenArray<'_> {
     }
 }
 
-pub fn scan<'a>(input: &'a str) -> Result<TokenArray<'a>, ()> {
+pub fn scan<'a>(input: &'a str) -> Result<TokenArray<'a>, TokenArray<'a>> {
     let mut scanner = Scanner::new(input);
     scanner.scan_tokens();
 
     // Check for lexical errors, then return tokens
     if scanner.had_error() {
-        return Err(());
+        return Err(scanner.tokens);
     }
     return Ok(scanner.tokens);
 }

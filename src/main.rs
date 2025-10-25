@@ -36,12 +36,14 @@ fn main() {
                 return;
             }
             
-            // Tokenize the input and print the tokens
-            let tokens = scan(&file_contents).unwrap_or_else(|_| {
+            // Tokenize the input and print the tokens, regardless of lexical errors
+            if let Ok(tokens) = scan(&file_contents) {
+                print!("{}", tokens);
+                return;
+            } else if let Err(tokens) = scan(&file_contents) {
+                print!("{}", tokens);
                 std::process::exit(65);
-            });
-
-            print!("{}", tokens);
+            }
         }
         "parse" => {
             // Get tokens from the scanner
