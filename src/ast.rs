@@ -1,4 +1,5 @@
 use crate::token::Token;
+
 // Visitor pattern so we can have multiple traversals (printer, interpreter, resolver, ...)
 pub trait ExprVisitor<'a> {
     type Output;
