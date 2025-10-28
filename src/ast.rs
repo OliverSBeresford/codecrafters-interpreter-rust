@@ -1,7 +1,12 @@
 use crate::token::Token;
+// Visitor pattern so we can have multiple traversals (printer, interpreter, resolver, ...)
+pub trait ExprVisitor<'a> {
+    type Output;
 
-pub trait ExprNode {
-    fn visit(&self) -> String;
+    fn visit_binary(&mut self, left: &'a Expr<'a>, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output;
+    fn visit_literal(&mut self, value: &'a Token<'a>) -> Self::Output;
+    fn visit_grouping(&mut self, expression: &'a Expr<'a>) -> Self::Output;
+    fn visit_unary(&mut self, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output;
 }
 
 #[derive(Debug)]
@@ -23,22 +28,14 @@ pub enum Expr<'a> {
     }
 }
 
-impl<'a> ExprNode for Expr<'a> {
-    fn visit(&self) -> String {
+impl<'a> Expr<'a> {
+    // Double-dispatch entrypoint: run a visitor over this expression and produce its output.
+    pub fn visit<T: ExprVisitor<'a>>(&'a self, visitor: &mut T) -> T::Output {
         match self {
-            Expr::Binary { left, operator, right } => {
-                return format!("({} {} {})", operator.lexeme, left.visit(), right.visit())
-            }
-            Expr::Literal { value } => {
-                // Literal is an Option, so we unwrap it here
-                return format!("{}", &value.literal.as_ref().unwrap())
-            }
-            Expr::Grouping { expression } => {
-                return format!("(group {})", expression.visit())
-            }
-            Expr::Unary { operator, right } => {
-                return format!("({} {})", operator.lexeme, right.visit())
-            }
+            Expr::Binary { left, operator, right } => visitor.visit_binary(left, operator, right),
+            Expr::Literal { value } => visitor.visit_literal(value),
+            Expr::Grouping { expression } => visitor.visit_grouping(expression),
+            Expr::Unary { operator, right } => visitor.visit_unary(operator, right),
         }
     }
 }

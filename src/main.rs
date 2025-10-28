@@ -6,9 +6,10 @@ mod scanner;
 mod token;
 mod ast;
 mod parse;
+mod ast_printer;
 
 use scanner::scan;
-use ast::ExprNode;
+use ast_printer::ExprNode;
 use parse::Parser;
 
 fn main() {
@@ -59,7 +60,7 @@ fn main() {
             // Print the AST using the visit method
             match expression {
                 Some(expr) => {
-                    println!("{}", expr.visit());
+                    println!("{}", expr.print());
                 }
                 None => {
                     std::process::exit(65);
