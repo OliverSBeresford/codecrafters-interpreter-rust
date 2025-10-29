@@ -19,11 +19,7 @@ impl fmt::Display for Value {
             Value::Float(n) => {
                 // If the value is an integer (no fractional part) print one decimal place
                 // Otherwise print the float normally.
-                if n.fract() == 0.0 {
-                    format!("{:.1}", n)
-                } else {
-                    format!("{}", n)
-                }
+                format!("{}", n)
             }
             Value::Str(s) => s.clone(),
             Value::Bool(b) => format!("{}", b),
