@@ -7,6 +7,7 @@ mod token;
 mod ast;
 mod parse;
 mod ast_printer;
+mod interpreter;
 
 use scanner::scan;
 use ast_printer::ExprNode;
@@ -66,6 +67,27 @@ fn main() {
                     std::process::exit(65);
                 }
             }
+        }
+        "evaluate" => {
+            // Get tokens from the scanner
+            let tokens = scan(&file_contents).unwrap_or_else(|_| {
+                std::process::exit(65);
+            });
+            
+            // Create a parser and parse the tokens into an AST
+            let mut parser = Parser::new(&tokens.tokens);
+            let expression = parser.expression().unwrap_or_else(|| {
+                std::process::exit(65);
+            });
+
+            // Create an interpreter and evaluate the expression
+            let mut interpreter = interpreter::Interpreter;
+            let value = interpreter.evaluate(&expression).unwrap_or_else(|| {
+                std::process::exit(65);
+            });
+
+            // Print the result of the evaluation
+            println!("{}", value);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
