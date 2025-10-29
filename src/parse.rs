@@ -18,7 +18,7 @@ impl<'a> Parser<'a> {
     }
 
     // Report a parse error
-    fn error(&self, token: &Token<'a>, message: &str) {
+    fn error(token: &Token<'a>, message: &str) {
         if token.token_type == TokenType::Eof {
             eprintln!("[line {}] Error at end: {}", token.line, message);
         } else {
@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
         if current_token.is_none() {
             eprintln!("Token is none");
         } else if current_token.as_ref().unwrap().token_type != expected {
-            self.error(current_token.as_ref().unwrap(), error_message);
+            Self::error(current_token.as_ref().unwrap(), error_message);
             return None;
         }
 
@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
                 });
             }
             _ => {
-                self.error(&current_token, "Expect expression.");
+                Self::error(&current_token, "Expect expression.");
                 return None;
             }
         }
