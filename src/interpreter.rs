@@ -205,7 +205,7 @@ impl<'a> ExprVisitor<'a> for Interpreter {
                 } else if let Value::Integer(num) = right_value {
                     return Some(Value::Integer(-num));
                 } else {
-                    return Self::error(operator, "Operand must be a number");
+                    return Self::error(operator, "Operand must be a number for unary '-'");
                 }
             }
             // Return the logical NOT of the truthiness of the right-hand side
