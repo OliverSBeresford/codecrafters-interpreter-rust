@@ -83,7 +83,7 @@ fn main() {
             // Create an interpreter and evaluate the expression
             let mut interpreter = interpreter::Interpreter;
             let value = interpreter.evaluate(&expression).unwrap_or_else(|| {
-                std::process::exit(65);
+                std::process::exit(70);
             });
 
             // Print the result of the evaluation
