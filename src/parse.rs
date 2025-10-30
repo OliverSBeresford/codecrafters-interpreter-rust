@@ -27,6 +27,7 @@ impl<'a> Parser<'a> {
     }
 
     // A synchronization method to recover from errors (not used yet)
+    #[allow(dead_code)]
     fn synchronize(&mut self) {
         self.advance();
 
