@@ -1,51 +1,78 @@
-[![progress-banner](https://backend.codecrafters.io/progress/interpreter/2f96d182-9db3-445e-ab87-3765387fa8ab)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# A tiny Lox interpreter in Rust
 
-This is a starting point for Rust solutions to the
-["Build your own Interpreter" Challenge](https://app.codecrafters.io/courses/interpreter/overview).
+This repository contains a Rust implementation-in-progress of a small programming language inspired by Lox from the book Crafting Interpreters. The goal is to build a tokenizer, parser (producing an AST), and a tree-walk interpreter.
 
-This challenge follows the book
-[Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom.
+Current capabilities:
+- Tokenize Lox source code into a stream of tokens
+- Parse expressions into an AST
+- Print a parenthesized representation of the AST (for debugging)
+- Evaluate expressions and print the result
 
-In this challenge you'll build an interpreter for
-[Lox](https://craftinginterpreters.com/the-lox-language.html), a simple
-scripting language. Along the way, you'll learn about tokenization, ASTs,
-tree-walk interpreters and more.
+## Usage
 
-Before starting this challenge, make sure you've read the "Welcome" part of the
-book that contains these chapters:
-
-- [Introduction](https://craftinginterpreters.com/introduction.html) (chapter 1)
-- [A Map of the Territory](https://craftinginterpreters.com/a-map-of-the-territory.html)
-  (chapter 2)
-- [The Lox Language](https://craftinginterpreters.com/the-lox-language.html)
-  (chapter 3)
-
-These chapters don't involve writing code, so they won't be covered in this
-challenge. This challenge will start from chapter 4,
-[Scanning](https://craftinginterpreters.com/scanning.html).
-
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your program is in `src/main.rs`. Study and uncomment the
-relevant code, and push your changes to pass the first stage:
+The entrypoint script compiles and runs the binary. Use it like this:
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+./your_program.sh <command> test.lox
 ```
 
-Time to move on to the next stage!
+Examples:
 
-# Stage 2 & beyond
+```sh
+# Print tokens
+./your_program.sh tokenize test.lox
 
-Note: This section is for stages 2 and beyond.
+# Print the AST in parenthesized form
+./your_program.sh parse test.lox
 
-1. Ensure you have `cargo (1.87)` installed locally
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-3. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+# Evaluate the expression(s) and print the result
+./your_program.sh evaluate test.lox
+```
+
+## Example
+
+Given the following `test.lox`:
+
+```lox
+7 * 3 / 7 / 1
+```
+
+Expected outputs:
+
+- Tokens
+
+```text
+NUMBER 7 7.0
+STAR * null
+NUMBER 3 3.0
+SLASH / null
+NUMBER 7 7.0
+SLASH / null
+NUMBER 1 1.0
+EOF  null
+```
+
+- AST (parenthesized)
+
+```text
+(/ (/ (* 7.0 3.0) 7.0) 1.0)
+```
+
+- Evaluation result
+
+```text
+3
+```
+
+## Commands
+
+- tokenize: Scans the input and prints tokens (one per line), including EOF. Intended for validating the scanner.
+- parse: Parses the input into an expression AST and prints it in a readable parenthesized format.
+- evaluate: Parses and evaluates the input program and prints the resulting value.
+
+More commands (e.g., interpret) will be added as the interpreter evolves.
+
+## References
+
+- The language design is based on Lox: https://craftinginterpreters.com/the-lox-language.html
+- This project follows ideas from the excellent book Crafting Interpreters by Robert Nystrom: https://craftinginterpreters.com/
