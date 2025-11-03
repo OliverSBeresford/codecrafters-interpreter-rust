@@ -8,6 +8,7 @@ mod ast;
 mod parse;
 mod ast_printer;
 mod interpreter;
+mod runtime_error;
 
 use scanner::scan;
 use ast_printer::ExprNode;
@@ -82,12 +83,7 @@ fn main() {
 
             // Create an interpreter and evaluate the expression
             let mut interpreter = interpreter::Interpreter;
-            let value = interpreter.evaluate(&expression).unwrap_or_else(|| {
-                std::process::exit(70);
-            });
-
-            // Print the result of the evaluation
-            println!("{}", value);
+            interpreter.interpret(&expression);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

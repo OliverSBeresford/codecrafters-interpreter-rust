@@ -1,5 +1,6 @@
 use crate::ast::{Expr, ExprVisitor};
 use crate::token::{Literal, Token, TokenType};
+use crate::runtime_error::RuntimeError;
 use std::fmt;
 
 // Define a Value enum to represent evaluated values, can be anything because Lox is dynamically typed
@@ -31,7 +32,7 @@ impl fmt::Display for Value {
 
 pub struct Interpreter;
 
-impl Interpreter {
+impl<'a> Interpreter {
     fn is_truthy(v: &Value) -> bool {
         match v {
             Value::Nil => false,
@@ -41,13 +42,12 @@ impl Interpreter {
     }
 
     // Report an evaluation error
-    fn error(token: &Token, message: &str) -> Option<Value> {
+    fn error<T>(token: &'a Token<'a>, message: &str) -> Result<T, RuntimeError<'a>> {
         if token.token_type == TokenType::Eof {
-            eprintln!("[line {}] Error at end: {}", token.line, message);
+            return Err(RuntimeError::new(token.clone(), format!("Error at end: {}", message)));
         } else {
-            eprintln!("[line {}] Error at '{}': {}", token.line, token.lexeme, message);
+            return Err(RuntimeError::new(token.clone(), format!("Error at '{}': {}", token.lexeme, message)));
         }
-        return None;
     }
 
     fn is_equal(a: &Value, b: &Value) -> bool {
@@ -62,21 +62,34 @@ impl Interpreter {
         }
     }
 
-    fn as_number(v: &Value) -> Option<f64> {
+    fn as_number(operator: &'a Token<'a>, v: &Value) -> Result<f64, RuntimeError<'a>> {
         match v {
-            Value::Float(n) => Some(*n),
-            Value::Integer(i) => Some(*i as f64),
-            _ => None,
+            Value::Float(n) => Ok(*n),
+            Value::Integer(i) => Ok(*i as f64),
+            _ => Self::error(operator, &format!("Operand must be a number for {}", operator.lexeme)),
         }
     }
 
-    pub fn evaluate(&mut self, expression: &Expr) -> Option<Value> {
+    fn evaluate(&mut self, expression: &'a Expr<'a>) -> Result<Value, RuntimeError<'a>> {
         return expression.visit(self);
+    }
+
+    pub fn interpret(&mut self, expression: &'a Expr<'a>) {
+        let result = self.evaluate(expression);
+
+        // Handle the result or runtime error
+        match result {
+            Ok(value) => println!("{}", value),
+            Err(runtime_error) => {
+                eprintln!("[Line {}] {}", runtime_error.token.line, runtime_error.message);
+                std::process::exit(70);
+            }
+        }
     }
 }
 
 impl<'a> ExprVisitor<'a> for Interpreter {
-    type Output = Option<Value>;
+    type Output = Result<Value, RuntimeError<'a>>;
 
     fn visit_binary(&mut self, left: &'a Expr<'a>, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output {
         let left_value = self.evaluate(left)?;
@@ -92,78 +105,66 @@ impl<'a> ExprVisitor<'a> for Interpreter {
                     let (Value::Str(str_left), Value::Str(str_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two numbers or two strings for '+'");
                     };
-                    return Some(Value::Str(format!("{}{}", str_left, str_right)));
+                    return Ok(Value::Str(format!("{}{}", str_left, str_right)));
                 }
                 // Handle numeric addition
                 else if either_floating {
-                    return Some(Value::Float(Self::as_number(&left_value)? + Self::as_number(&right_value)?));
+                    return Ok(Value::Float(Self::as_number(operator, &left_value)? + Self::as_number(operator, &right_value)?));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two numbers or two strings for '+'");
                     };
-                    return Some(Value::Integer(num_left + num_right));
+                    return Ok(Value::Integer(num_left + num_right));
                 }
             }
             TokenType::Minus => {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '-'");
                 } else if either_floating {
-                    return Some(Value::Float(Self::as_number(&left_value)? - Self::as_number(&right_value)?));
+                    return Ok(Value::Float(Self::as_number(operator, &left_value)? - Self::as_number(operator, &right_value)?));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two integers for '-'");
                     };
-                    return Some(Value::Integer(num_left - num_right));
+                    return Ok(Value::Integer(num_left - num_right));
                 }
             }
             TokenType::Star => {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '*'");
                 } else if either_floating {
-                    return Some(Value::Float(Self::as_number(&left_value)? * Self::as_number(&right_value)?));
+                    return Ok(Value::Float(Self::as_number(operator, &left_value)? * Self::as_number(operator, &right_value)?));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two integers for '*'");
                     };
-                    return Some(Value::Integer(num_left * num_right));
+                    return Ok(Value::Integer(num_left * num_right));
                 }
             }
             TokenType::Slash => {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '/'");
                 }
-                return Some(Value::Float(Self::as_number(&left_value)? / Self::as_number(&right_value)?));
+                return Ok(Value::Float(Self::as_number(operator, &left_value)? / Self::as_number(operator, &right_value)?));
             }
             TokenType::Greater => {
-                let (num_left, num_right) = (Self::as_number(&left_value), Self::as_number(&right_value));
-                match (num_left, num_right) {
-                    (Some(num_left), Some(num_right)) => Some(Value::Bool(num_left > num_right)),
-                    _ => Self::error(operator, "Operands must be numbers for '>'"),
-                }
+                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
+                return Ok(Value::Bool(num_left > num_right));
             }
             TokenType::GreaterEqual => {
-                let (num_left, num_right) = (Self::as_number(&left_value), Self::as_number(&right_value));
-                match (num_left, num_right) {
-                    (Some(num_left), Some(num_right)) => Some(Value::Bool(num_left >= num_right)),
-                    _ => Self::error(operator, "Operands must be numbers for '>='"),
-                }
+                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
+                return Ok(Value::Bool(num_left >= num_right));
             }
             TokenType::Less => {
-                let (num_left, num_right) = (Self::as_number(&left_value), Self::as_number(&right_value));
-                match (num_left, num_right) {
-                    (Some(num_left), Some(num_right)) => Some(Value::Bool(num_left < num_right)),
-                    _ => Self::error(operator, "Operands must be numbers for '<'"),
-                }
+                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
+                return Ok(Value::Bool(num_left < num_right));
             }
             TokenType::LessEqual => {
-                let (num_left, num_right) = (Self::as_number(&left_value), Self::as_number(&right_value));
-                match (num_left, num_right) {
-                    (Some(num_left), Some(num_right)) => Some(Value::Bool(num_left <= num_right)),
-                    _ => Self::error(operator, "Operands must be numbers for '<='"),
-                }
+                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
+                return Ok(Value::Bool(num_left <= num_right));
             }
-            TokenType::EqualEqual => Some(Value::Bool(Self::is_equal(&left_value, &right_value))),
-            TokenType::BangEqual => Some(Value::Bool(!Self::is_equal(&left_value, &right_value))),
+            TokenType::EqualEqual => return Ok(Value::Bool(Self::is_equal(&left_value, &right_value))),
+            TokenType::BangEqual => return Ok(Value::Bool(!Self::is_equal(&left_value, &right_value))),
             _ => Self::error(operator, &format!("Unsupported binary operator: {:?}", operator.token_type)),
         }
     }
@@ -184,7 +185,7 @@ impl<'a> ExprVisitor<'a> for Interpreter {
             Some(Literal::Nil) => Value::Nil,
             None => Value::Nil,
         };
-        return Some(v);
+        return Ok(v);
     }
 
     // Start the visitor pattern on the inner expression
@@ -201,15 +202,15 @@ impl<'a> ExprVisitor<'a> for Interpreter {
             TokenType::Minus => {
                 // Return the negated number or error if it's not a number
                 if let Value::Float(num) = right_value {
-                    return Some(Value::Float(-num));
+                    return Ok(Value::Float(-num));
                 } else if let Value::Integer(num) = right_value {
-                    return Some(Value::Integer(-num));
+                    return Ok(Value::Integer(-num));
                 } else {
                     return Self::error(operator, "Operand must be a number for unary '-'");
                 }
             }
             // Return the logical NOT of the truthiness of the right-hand side
-            TokenType::Bang => Some(Value::Bool(!Self::is_truthy(&right_value))),
+            TokenType::Bang => Ok(Value::Bool(!Self::is_truthy(&right_value))),
             _ => Self::error(operator, &format!("Unsupported unary operator: {:?}", operator.token_type)),
         }
     }
