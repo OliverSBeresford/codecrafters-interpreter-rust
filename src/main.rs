@@ -4,11 +4,12 @@ use std::io::{self, Write};
 
 mod scanner;
 mod token;
-mod ast;
+mod expr_syntax_tree;
 mod parse;
 mod ast_printer;
 mod interpreter;
 mod runtime_error;
+mod statement_syntax_tree;
 
 use scanner::scan;
 use ast_printer::ExprNode;
