@@ -104,8 +104,6 @@ impl<'a> Parser<'a> {
                 std::process::exit(65);
             }
             else if let Ok(statement) = statement {
-                dbg!("Parsed statement: {}", &statement);
-                println!("{} {}", self.current, self.tokens.len());
                 statements.push(statement);
             }
         }
