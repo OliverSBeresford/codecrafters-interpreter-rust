@@ -7,11 +7,11 @@ type Output = String;
 pub struct AstPrinter;
 
 impl AstPrinter {
-    pub fn print(&mut self, expr: &Expr) {
+    pub fn print(&self, expr: &Expr) {
         println!("{}", self.visit(expr));
     }
 
-    fn visit(&mut self, expr: &Expr) -> Output {
+    pub fn visit(&self, expr: &Expr) -> Output {
         match expr {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
             Expr::Literal { value } => self.visit_literal(value),
@@ -20,19 +20,19 @@ impl AstPrinter {
         }
     }
 
-    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Output {
+    fn visit_binary(&self, left: &Expr, operator: &Token, right: &Expr) -> Output {
         format!("({} {} {})", operator.lexeme, self.visit(left), self.visit(right))
     }
 
-    fn visit_literal(&mut self, value: &Token) -> Output {
+    fn visit_literal(&self, value: &Token) -> Output {
         format!("{}", value.literal.as_ref().unwrap())
     }
 
-    fn visit_grouping(&mut self, expression: &Expr) -> Output {
+    fn visit_grouping(&self, expression: &Expr) -> Output {
         format!("(group {})", self.visit(expression))
     }
 
-    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Output {
+    fn visit_unary(&self, operator: &Token, right: &Expr) -> Output {
         format!("({} {})", operator.lexeme, self.visit(right))
     }
 }
