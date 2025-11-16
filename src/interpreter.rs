@@ -1,4 +1,4 @@
-use crate::expr_syntax_tree::{Expr, ExprVisitor};
+use crate::expr_syntax_tree::{Expr};
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
 use std::fmt;
@@ -30,9 +30,12 @@ impl fmt::Display for Value {
     }
 }
 
+// Define the output type for interpreter methods
+type Output = Result<Value, RuntimeError>;
+
 pub struct Interpreter;
 
-impl<'a> Interpreter {
+impl Interpreter {
     fn is_truthy(v: &Value) -> bool {
         match v {
             Value::Nil => false,
@@ -42,27 +45,15 @@ impl<'a> Interpreter {
     }
 
     // Report an evaluation error
-    fn error<T>(token: &'a Token<'a>, message: &str) -> Result<T, RuntimeError<'a>> {
+    fn error<T>(token: &Token, message: &str) -> Result<T, RuntimeError> {
         if token.token_type == TokenType::Eof {
-            return Err(RuntimeError::new(token.clone(), format!("Error at end: {}", message)));
+            return Err(RuntimeError::new(token.line, format!("Error at end: {}", message)));
         } else {
-            return Err(RuntimeError::new(token.clone(), format!("Error at '{}': {}", token.lexeme, message)));
+            return Err(RuntimeError::new(token.line, format!("Error at '{}': {}", token.lexeme, message)));
         }
     }
 
-    fn is_equal(a: &Value, b: &Value) -> bool {
-        match (a, b) {
-            (Value::Nil, Value::Nil) => true,
-            (Value::Bool(x), Value::Bool(y)) => x == y,
-            (Value::Float(x), Value::Float(y)) => x == y,
-            (Value::Integer(x), Value::Integer(y)) => x == y,
-            (Value::Str(x), Value::Str(y)) => x == y,
-            // No cross-type equality in Lox
-            _ => false,
-        }
-    }
-
-    fn as_number(operator: &'a Token<'a>, v: &Value) -> Result<f64, RuntimeError<'a>> {
+    fn as_number(operator: &Token, v: &Value) -> Result<f64, RuntimeError> {
         match v {
             Value::Float(n) => Ok(*n),
             Value::Integer(i) => Ok(*i as f64),
@@ -70,28 +61,29 @@ impl<'a> Interpreter {
         }
     }
 
-    fn evaluate(&mut self, expression: &'a Expr<'a>) -> Result<Value, RuntimeError<'a>> {
-        return expression.visit(self);
+    fn evaluate(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+        match expression {
+            Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
+            Expr::Literal { value } => self.visit_literal(value),
+            Expr::Grouping { expression } => self.visit_grouping(expression),
+            Expr::Unary { operator, right } => self.visit_unary(operator, right),
+        }
     }
 
-    pub fn interpret(&mut self, expression: &'a Expr<'a>) {
+    pub fn interpret(&mut self, expression: &Expr) {
         let result = self.evaluate(expression);
 
         // Handle the result or runtime error
         match result {
             Ok(value) => println!("{}", value),
             Err(runtime_error) => {
-                eprintln!("[Line {}] {}", runtime_error.token.line, runtime_error.message);
+                eprintln!("[Line {}] {}", runtime_error.line, runtime_error.message);
                 std::process::exit(70);
             }
         }
     }
-}
 
-impl<'a> ExprVisitor<'a> for Interpreter {
-    type Output = Result<Value, RuntimeError<'a>>;
-
-    fn visit_binary(&mut self, left: &'a Expr<'a>, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output {
+    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Output {
         let left_value = self.evaluate(left)?;
         let right_value = self.evaluate(right)?;
         let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_)) ||
@@ -163,13 +155,13 @@ impl<'a> ExprVisitor<'a> for Interpreter {
                 let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
                 return Ok(Value::Bool(num_left <= num_right));
             }
-            TokenType::EqualEqual => return Ok(Value::Bool(Self::is_equal(&left_value, &right_value))),
-            TokenType::BangEqual => return Ok(Value::Bool(!Self::is_equal(&left_value, &right_value))),
+            TokenType::EqualEqual => return Ok(Value::Bool(is_equal(&left_value, &right_value))),
+            TokenType::BangEqual => return Ok(Value::Bool(!is_equal(&left_value, &right_value))),
             _ => Self::error(operator, &format!("Unsupported binary operator: {:?}", operator.token_type)),
         }
     }
 
-    fn visit_literal(&mut self, value: &'a Token<'a>) -> Self::Output {
+    fn visit_literal(&mut self, value: &Token) -> Output {
         // Convert the token's literal to a Value
         let v = match value.literal.as_ref() {
             Some(Literal::Number(n)) => {
@@ -188,12 +180,12 @@ impl<'a> ExprVisitor<'a> for Interpreter {
         return Ok(v);
     }
 
-    // Start the visitor pattern on the inner expression
-    fn visit_grouping(&mut self, expression: &'a Expr<'a>) -> Self::Output {
-        expression.visit(self)
+    // Evaluate the inner expression
+    fn visit_grouping(&mut self, expression: &Expr) -> Output {
+        self.evaluate(expression)
     }
 
-    fn visit_unary(&mut self, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output {
+    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Output {
         // Evaluate the right-hand side expression
         let right_value = self.evaluate(right)?;
 
@@ -213,5 +205,17 @@ impl<'a> ExprVisitor<'a> for Interpreter {
             TokenType::Bang => Ok(Value::Bool(!Self::is_truthy(&right_value))),
             _ => Self::error(operator, &format!("Unsupported unary operator: {:?}", operator.token_type)),
         }
+    }
+}
+
+fn is_equal(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Nil, Value::Nil) => true,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Float(x), Value::Float(y)) => x == y,
+        (Value::Integer(x), Value::Integer(y)) => x == y,
+        (Value::Str(x), Value::Str(y)) => x == y,
+        // No cross-type equality in Lox
+        _ => false,
     }
 }

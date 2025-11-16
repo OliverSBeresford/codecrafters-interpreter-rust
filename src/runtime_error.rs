@@ -1,15 +1,13 @@
-use crate::token::Token;
-
 // Define a RuntimeError struct to represent runtime errors during interpretation
-pub struct RuntimeError<'a> {
-    pub token: Token<'a>,
+pub struct RuntimeError {
+    pub line: usize,
     pub message: String,
 }
 
-impl<'a> RuntimeError<'a> {
-    pub fn new(token: Token<'a>, message: String) -> Self {
+impl RuntimeError {
+    pub fn new(line: usize, message: String) -> Self {
         return RuntimeError {
-            token,
+            line,
             message,
         };
     }

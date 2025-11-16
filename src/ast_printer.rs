@@ -1,39 +1,38 @@
-use crate::expr_syntax_tree::{Expr, ExprVisitor};
+use crate::expr_syntax_tree::{Expr};
 use crate::token::Token;
 
-// Expression node trait for printing
-pub trait ExprNode {
-    fn print(&self) -> String;
-}
+type Output = String;
 
-// Pretty-printer visitor
+// Pretty-printer
 pub struct AstPrinter;
 
-impl<'a> ExprVisitor<'a> for AstPrinter {
-    type Output = String;
-
-    fn visit_binary(&mut self, left: &'a Expr<'a>, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output {
-        format!("({} {} {})", operator.lexeme, left.visit(self), right.visit(self))
+impl AstPrinter {
+    pub fn print(&mut self, expr: &Expr) {
+        println!("{}", self.visit(expr));
     }
 
-    fn visit_literal(&mut self, value: &'a Token<'a>) -> Self::Output {
+    fn visit(&mut self, expr: &Expr) -> Output {
+        match expr {
+            Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
+            Expr::Literal { value } => self.visit_literal(value),
+            Expr::Grouping { expression } => self.visit_grouping(expression),
+            Expr::Unary { operator, right } => self.visit_unary(operator, right),
+        }
+    }
+
+    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Output {
+        format!("({} {} {})", operator.lexeme, self.visit(left), self.visit(right))
+    }
+
+    fn visit_literal(&mut self, value: &Token) -> Output {
         format!("{}", value.literal.as_ref().unwrap())
     }
 
-    fn visit_grouping(&mut self, expression: &'a Expr<'a>) -> Self::Output {
-        format!("(group {})", expression.visit(self))
+    fn visit_grouping(&mut self, expression: &Expr) -> Output {
+        format!("(group {})", self.visit(expression))
     }
 
-    fn visit_unary(&mut self, operator: &'a Token<'a>, right: &'a Expr<'a>) -> Self::Output {
-        format!("({} {})", operator.lexeme, right.visit(self))
-    }
-}
-
-impl<'a> ExprNode for Expr<'a> {
-    fn print(&self) -> String {
-        let mut printer = AstPrinter;
-
-        // Use the visitor to print this expression
-        Expr::visit(self, &mut printer)
+    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Output {
+        format!("({} {})", operator.lexeme, self.visit(right))
     }
 }
