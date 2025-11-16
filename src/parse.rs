@@ -31,11 +31,11 @@ impl<'a> Parser<'a> {
     // A synchronization method to recover from errors (not used yet)
     #[allow(dead_code)]
     fn synchronize(&mut self) {
-        self.advance();
+        self.consume_any();
 
         while let Some(token) = self.current_token() {
             if token.token_type == TokenType::Semicolon {
-                self.advance();
+                self.consume_any();
                 return;
             }
 
@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
 
-            self.advance();
+            self.consume_any();
         }
     }
 
@@ -87,6 +87,10 @@ impl<'a> Parser<'a> {
         }
 
         return Ok(current_token);
+    }
+
+    fn consume_any(&mut self) {
+        let _ = self.advance();
     }
 
     pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
