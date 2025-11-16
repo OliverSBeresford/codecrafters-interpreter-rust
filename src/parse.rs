@@ -102,16 +102,56 @@ impl<'a> Parser<'a> {
 
         // Parse statements until the end of the token stream (-1 for EOF)
         while self.current < self.tokens.len() - 1 {
-            let statement = self.statement();
+            let statement = self.declaration();
             if let Err(e) = &statement {
                 eprintln!("{}", e);
-                std::process::exit(65);
             }
             else if let Ok(statement) = statement {
                 statements.push(statement);
             }
         }
         return statements;
+    }
+
+    fn declaration(&mut self) -> Result<Statement<'a>, ParseError> {
+        // For now, only parse variable declarations and statements
+        if self.check(&[TokenType::Keyword(Keyword::Var)]) {
+            return self.var_declaration().or_else(|err: ParseError| {
+                self.synchronize(); // Synchronize on error
+                Err(err)
+            });
+        }
+        return self.statement().or_else(|err: ParseError| {
+            self.synchronize(); // Synchronize on error
+            Err(err)
+        });
+    }
+
+    fn var_declaration(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the 'var' keyword
+        let _var_token = self.advance();
+
+        // Consume the variable name
+        let name_token = self.consume(TokenType::Identifier, "Expect variable name.")?;
+
+        // Optional initializer
+        let initializer = if self.check(&[TokenType::Equal]) {
+            // Consume the '=' token
+            let _equal_token = self.advance();
+
+            // Parse the initializer expression
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        // Consume the semicolon
+        self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.")?;
+
+        return Ok(Statement::Var {
+            name: name_token,
+            initializer,
+        });
     }
 
     fn statement(&mut self) -> Result<Statement<'a>, ParseError> {
@@ -264,6 +304,11 @@ impl<'a> Parser<'a> {
             TokenType::Keyword(Nil) | TokenType::Keyword(False) | TokenType::Keyword(True) => {
                 return Ok(Expr::Literal{
                     value: current_token
+                });
+            }
+            TokenType::Identifier => {
+                return Ok(Expr::Variable{
+                    name: current_token
                 });
             }
             _ => {

@@ -11,6 +11,8 @@ mod interpreter;
 mod runtime_error;
 mod statement_syntax_tree;
 mod parse_error;
+mod environment;
+mod value;
 
 use scanner::scan;
 use parse::Parser;
@@ -76,7 +78,7 @@ fn main() {
             });
 
             // Create an interpreter and evaluate the expression
-            let mut interpreter = interpreter::Interpreter;
+            let mut interpreter = interpreter::Interpreter::new();
             let result = interpreter.evaluate(&expression).unwrap_or_else(|runtime_error| {
                 eprintln!("{}", runtime_error);
                 std::process::exit(70);
@@ -94,7 +96,7 @@ fn main() {
             let statements = parser.parse();
 
             // Create an interpreter and execute the statements
-            let mut interpreter = interpreter::Interpreter;
+            let mut interpreter = interpreter::Interpreter::new();
             interpreter.interpret(statements);
         }
         _ => {

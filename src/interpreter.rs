@@ -2,6 +2,7 @@ use crate::expr_syntax_tree::{Expr};
 use crate::statement_syntax_tree::Statement;
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
+use crate::environment::Environment;
 use std::fmt;
 use crate::value::Value;
 
@@ -22,9 +23,17 @@ impl fmt::Display for Value {
     }
 }
 
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: Environment,
+}
 
 impl Interpreter {
+    pub fn new() -> Self {
+        Interpreter {
+            environment: Environment::new(),
+        }
+    }
+
     fn is_truthy(v: &Value) -> bool {
         match v {
             Value::Nil => false,
@@ -56,6 +65,11 @@ impl Interpreter {
             Expr::Literal { value } => self.visit_literal(value),
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
+            // Handle variable expressions
+            Expr::Variable { name } => {
+                let value = self.environment.get(name.lexeme, name.line)?;
+                Ok(value.clone())
+            }
         }
     }
 
@@ -76,6 +90,15 @@ impl Interpreter {
             }
             Statement::Print { expression } => {
                 self.execute_print(&expression)
+            }
+            Statement::Var { name, initializer } => {
+                let mut value: Value = Value::Nil;
+                if let Some(init_expr) = initializer {
+                    let evaluated_value = self.evaluate(init_expr)?;
+                    value = evaluated_value;
+                }
+                self.environment.define(name.lexeme.to_string(), value.clone());
+                return Ok(Value::Nil);
             }
         }
     }

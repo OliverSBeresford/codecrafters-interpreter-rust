@@ -17,6 +17,7 @@ impl AstPrinter {
             Expr::Literal { value } => self.visit_literal(value),
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
+            Expr::Variable { name } => self.visit_variable(name),
         }
     }
 
@@ -34,5 +35,9 @@ impl AstPrinter {
 
     fn visit_unary(&self, operator: &Token, right: &Expr) -> Output {
         format!("({} {})", operator.lexeme, self.visit(right))
+    }
+
+    fn visit_variable(&self, name: &Token) -> Output {
+        format!("(var {})", name.lexeme)
     }
 }

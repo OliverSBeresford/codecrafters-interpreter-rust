@@ -16,5 +16,8 @@ pub enum Expr<'a> {
     Unary {
         operator: Token<'a>,
         right: Box<Expr<'a>>,
-    }
+    },
+    Variable {
+        name: Token<'a>,
+    },
 }
