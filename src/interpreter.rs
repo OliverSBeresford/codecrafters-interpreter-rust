@@ -3,16 +3,7 @@ use crate::statement_syntax_tree::Statement;
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
 use std::fmt;
-
-// Define a Value enum to represent evaluated values, can be anything because Lox is dynamically typed
-#[derive(Debug, Clone)]
-pub enum Value {
-    Integer(isize),
-    Float(f64),
-    Str(String),
-    Bool(bool),
-    Nil,
-}
+use crate::value::Value;
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
