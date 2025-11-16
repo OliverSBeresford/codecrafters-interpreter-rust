@@ -9,7 +9,8 @@ mod parse;
 mod ast_printer;
 mod interpreter;
 mod runtime_error;
-// mod statement_syntax_tree;
+mod statement_syntax_tree;
+mod parse_error;
 
 use scanner::scan;
 use parse::Parser;
@@ -40,20 +41,13 @@ fn main() {
             }
 
             let tokens = scan(&file_contents);
-            // Tokenize the input and print the tokens, regardless of lexical errors
-            if let Ok(tokens) = tokens {
-                print!("{}", tokens);
-                return;
-            } else if let Err(tokens) = tokens {
-                print!("{}", tokens);
-                std::process::exit(65);
-            }
+
+            // Tokenize the input and print the tokens
+            print!("{}", tokens); 
         }
         "parse" => {
             // Get tokens from the scanner
-            let tokens = scan(&file_contents).unwrap_or_else(|_| {
-                std::process::exit(65);
-            });
+            let tokens = scan(&file_contents);
             
             // Create a parser and parse the tokens into an AST
             let mut parser = Parser::new(&tokens.tokens);
@@ -61,29 +55,47 @@ fn main() {
 
             // Print the AST using the visit method
             match expression {
-                Some(expr) => {
+                Ok(expr) => {
                     ast_printer::AstPrinter.print(&expr);
                 }
-                None => {
+                Err(error) => {
+                    eprintln!("{}", error);
                     std::process::exit(65);
                 }
             }
         }
         "evaluate" => {
             // Get tokens from the scanner
-            let tokens = scan(&file_contents).unwrap_or_else(|_| {
-                std::process::exit(65);
-            });
+            let tokens = scan(&file_contents);
             
             // Create a parser and parse the tokens into an AST
             let mut parser = Parser::new(&tokens.tokens);
-            let expression = parser.expression().unwrap_or_else(|| {
+            let expression = parser.expression().unwrap_or_else(|error| {
+                eprintln!("{}", error);
                 std::process::exit(65);
             });
 
             // Create an interpreter and evaluate the expression
             let mut interpreter = interpreter::Interpreter;
-            interpreter.interpret(&expression);
+            let result = interpreter.evaluate(&expression).unwrap_or_else(|runtime_error| {
+                eprintln!("{}", runtime_error);
+                std::process::exit(70);
+            });
+            
+            // Print the result of the evaluation
+            println!("{}", result);
+        }
+        "run" => {
+            // Get tokens from the scanner
+            let tokens = scan(&file_contents);
+            
+            // Create a parser and parse the tokens into statements
+            let mut parser = Parser::new(&tokens.tokens);
+            let statements = parser.parse();
+
+            // Create an interpreter and execute the statements
+            let mut interpreter = interpreter::Interpreter;
+            interpreter.interpret(statements);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();

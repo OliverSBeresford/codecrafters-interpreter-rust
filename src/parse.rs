@@ -3,6 +3,8 @@ use crate::token::TokenType;
 use crate::expr_syntax_tree::Expr;
 use crate::token::Keyword::{Nil, False, True};
 use crate::token::Keyword;
+use crate::statement_syntax_tree::Statement;
+use crate::parse_error::ParseError;
 
 pub struct Parser<'a> {
     tokens: &'a Vec<Token<'a>>,
@@ -18,11 +20,11 @@ impl<'a> Parser<'a> {
     }
 
     // Report a parse error
-    fn error(token: &Token<'a>, message: &str) {
+    fn error<T>(token: &Token<'a>, message: &str) -> Result<T, ParseError> {
         if token.token_type == TokenType::Eof {
-            eprintln!("[line {}] Error at end: {}", token.line, message);
+            return Err(ParseError::new(token.line, format!("Error at end: {}", message)));
         } else {
-            eprintln!("[line {}] Error at '{}': {}", token.line, token.lexeme, message);
+            return Err(ParseError::new(token.line, format!("Error at '{}': {}", token.lexeme, message)));
         }
     }
 
@@ -52,13 +54,13 @@ impl<'a> Parser<'a> {
     }
 
     // Return the current token and advance the parser
-    fn advance(&mut self) -> Option<Token<'a>> {
+    fn advance(&mut self) -> Result<Token<'a>, ParseError> {
         if self.current < self.tokens.len() {
             let token = self.tokens[self.current].clone();
             self.current += 1;
-            return Some(token);
+            return Ok(token);
         } else {
-            return None;
+            return Self::error(&self.tokens[self.tokens.len() - 1], "Unexpected end of input");
         }
     }
 
@@ -76,32 +78,83 @@ impl<'a> Parser<'a> {
     }
 
     // Consume a token of the expected type, or return an error
-    fn consume(&mut self, expected: TokenType, error_message: &str) -> Option<Token<'a>> {
-        let current_token = self.advance();
+    fn consume(&mut self, expected: TokenType, error_message: &str) -> Result<Token<'a>, ParseError> {
+        let current_token = self.advance()?;
 
         // If the current token is not of the expected type or doesn't exist, return an error
-        if current_token.is_none() {
-            eprintln!("Token is none");
-        } else if current_token.as_ref().unwrap().token_type != expected {
-            Self::error(current_token.as_ref().unwrap(), error_message);
-            return None;
+        if current_token.token_type != expected {
+            return Self::error(&current_token, error_message);
         }
 
-        return current_token;
+        return Ok(current_token);
     }
 
-    pub fn expression(&mut self) -> Option<Expr<'a>> {
+    pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
         return self.equality();
     }
 
+    pub fn parse(&mut self) -> Vec<Statement<'a>> {
+        let mut statements: Vec<Statement<'a>> = Vec::new();
+
+        // Parse statements until the end of the token stream (-1 for EOF)
+        while self.current < self.tokens.len() - 1 {
+            let statement = self.statement();
+            if let Err(e) = &statement {
+                eprintln!("{}", e);
+                std::process::exit(65);
+            }
+            else if let Ok(statement) = statement {
+                dbg!("Parsed statement: {}", &statement);
+                println!("{} {}", self.current, self.tokens.len());
+                statements.push(statement);
+            }
+        }
+        return statements;
+    }
+
+    fn statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // For now, only parse expression and print statements
+        if self.check(&[TokenType::Keyword(Keyword::Print)]) {
+            return self.print_statement();
+        } else {
+            return self.expression_statement();
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the 'print' keyword
+        let _print_token = self.advance();
+
+        // Parse the expression to be printed
+        let expression = self.expression()?;
+
+        // Consume the semicolon at the end of the print statement
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+
+        return Ok(Statement::Print {
+            expression,
+        });
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        let expression = self.expression()?;
+
+        // Consume the semicolon at the end of the expression statement
+        self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
+
+        return Ok(Statement::Expression {
+            expression,
+        });
+    }
+
     // Lowest precedence, going up from here
-    fn equality(&mut self) -> Option<Expr<'a>> {
+    fn equality(&mut self) -> Result<Expr<'a>, ParseError> {
         // Create the left-hand side expression
         let mut expr = self.comparison()?;
 
         while self.check(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             // Consume the operator and store it
-            let operator = self.advance().unwrap();
+            let operator = self.advance()?;
             let right = self.comparison()?;
 
             // Create a new binary expression with the left and right expressions
@@ -111,17 +164,17 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             };
         }
-        return Some(expr);
+        return Ok(expr);
     }
 
     // A comparison is a term followed by zero or more <, >, <=, >=, each followed by a term, like 1 < 2 >= 3
-    fn comparison(&mut self) -> Option<Expr<'a>> {
+    fn comparison(&mut self) -> Result<Expr<'a>, ParseError> {
         // Create the left-hand side expression (can be a term or above)
         let mut expr = self.term()?;
 
         while self.check(&[TokenType::Less, TokenType::Greater, TokenType::LessEqual, TokenType::GreaterEqual]) {
             // Consume the operator and store it
-            let operator = self.advance().unwrap();
+            let operator = self.advance()?;
             let right = self.term()?;
 
             // Create a new binary expression with the left and right expressions
@@ -131,17 +184,17 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             };
         }
-        return Some(expr);
+        return Ok(expr);
     }
 
     // A term is a factor followed by zero or more + or -, each followed by a factor, like 1 + 2 - 3
-    fn term(&mut self) -> Option<Expr<'a>> {
+    fn term(&mut self) -> Result<Expr<'a>, ParseError> {
         // Create the left-hand side expression (can be a factor or above)
         let mut expr = self.factor()?;
 
         while self.check(&[TokenType::Minus, TokenType::Plus]) {
             // Consume the operator and store it
-            let operator = self.advance().unwrap();
+            let operator = self.advance()?;
             let right = self.factor()?;
 
             // Create a new binary expression with the left and right expressions
@@ -151,17 +204,17 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             };
         }
-        return Some(expr);
+        return Ok(expr);
     }
 
     // A factor is a unary expression followed by zero or more * or /, each followed by a unary expression, like -4 / 2 * 3
-    fn factor(&mut self) -> Option<Expr<'a>> {
+    fn factor(&mut self) -> Result<Expr<'a>, ParseError> {
         // Create the left-hand side expression (can be a unary or above)
         let mut expr = self.unary()?;
 
         while self.check(&[TokenType::Slash, TokenType::Star]) {
             // Consume the operator and store it
-            let operator = self.advance().unwrap();
+            let operator = self.advance()?;
             let right = self.unary()?;
 
             // Create a new binary expression with the left and right expressions
@@ -171,16 +224,16 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             };
         }
-        return Some(expr);
+        return Ok(expr);
     }
 
     // A unary expression is either a primary expression or a unary operator followed by another unary expression, like -!!5
-    fn unary(&mut self) -> Option<Expr<'a>> {
+    fn unary(&mut self) -> Result<Expr<'a>, ParseError> {
         if self.check(&[TokenType::Bang, TokenType::Minus]) {
-            let operator = self.advance().unwrap();
+            let operator = self.advance()?;
             let right = self.unary()?;
 
-            return Some(Expr::Unary {
+            return Ok(Expr::Unary {
                 operator,
                 right: Box::new(right),
             });
@@ -190,30 +243,29 @@ impl<'a> Parser<'a> {
     }
 
     // A primary expression is either a literal value or a parenthesized expression
-    fn primary(&mut self) -> Option<Expr<'a>> {
+    fn primary(&mut self) -> Result<Expr<'a>, ParseError> {
         let current_token = self.advance()?;
 
         match current_token.token_type {
             TokenType::Number | TokenType::String => {
-                return Some(Expr::Literal{
+                return Ok(Expr::Literal{
                     value: current_token
                 });
             },
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 self.consume(TokenType::RightParen, "Expect expression.")?;
-                return Some(Expr::Grouping{
+                return Ok(Expr::Grouping{
                     expression: Box::new(expr)
                 });
             }
             TokenType::Keyword(Nil) | TokenType::Keyword(False) | TokenType::Keyword(True) => {
-                return Some(Expr::Literal{
+                return Ok(Expr::Literal{
                     value: current_token
                 });
             }
             _ => {
-                Self::error(&current_token, "Expect expression.");
-                return None;
+                return Self::error(&current_token, "Expect expression.");
             }
         }
     }

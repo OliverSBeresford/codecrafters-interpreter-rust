@@ -1,4 +1,5 @@
 use crate::expr_syntax_tree::{Expr};
+use crate::statement_syntax_tree::Statement;
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
 use std::fmt;
@@ -30,9 +31,6 @@ impl fmt::Display for Value {
     }
 }
 
-// Define the output type for interpreter methods
-type Output = Result<Value, RuntimeError>;
-
 pub struct Interpreter;
 
 impl Interpreter {
@@ -61,7 +59,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+    pub fn evaluate(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
         match expression {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
             Expr::Literal { value } => self.visit_literal(value),
@@ -70,20 +68,37 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, expression: &Expr) {
-        let result = self.evaluate(expression);
+    fn execute_expression(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+        self.evaluate(expression)
+    }
 
-        // Handle the result or runtime error
-        match result {
-            Ok(value) => println!("{}", value),
-            Err(runtime_error) => {
-                eprintln!("[Line {}] {}", runtime_error.line, runtime_error.message);
+    fn execute_print(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+        let value = self.evaluate(expression)?;
+        println!("{}", value);
+        Ok(Value::Nil)
+    }
+
+    fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
+        match statement {
+            Statement::Expression { expression } => {
+                self.execute_expression(&expression)
+            }
+            Statement::Print { expression } => {
+                self.execute_print(&expression)
+            }
+        }
+    }
+
+    pub fn interpret(&mut self, statements: Vec<Statement>) {
+        for statement in statements {
+            if let Err(runtime_error) = self.execute(&statement) {
+                eprintln!("{}", runtime_error);
                 std::process::exit(70);
             }
         }
     }
 
-    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Output {
+    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Result<Value, RuntimeError> {
         let left_value = self.evaluate(left)?;
         let right_value = self.evaluate(right)?;
         let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_)) ||
@@ -161,7 +176,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_literal(&mut self, value: &Token) -> Output {
+    fn visit_literal(&mut self, value: &Token) -> Result<Value, RuntimeError> {
         // Convert the token's literal to a Value
         let v = match value.literal.as_ref() {
             Some(Literal::Number(n)) => {
@@ -181,11 +196,11 @@ impl Interpreter {
     }
 
     // Evaluate the inner expression
-    fn visit_grouping(&mut self, expression: &Expr) -> Output {
+    fn visit_grouping(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
         self.evaluate(expression)
     }
 
-    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Output {
+    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Result<Value, RuntimeError> {
         // Evaluate the right-hand side expression
         let right_value = self.evaluate(right)?;
 

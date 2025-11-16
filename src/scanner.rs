@@ -26,15 +26,16 @@ impl fmt::Display for TokenArray<'_> {
     }
 }
 
-pub fn scan<'a>(input: &'a str) -> Result<TokenArray<'a>, TokenArray<'a>> {
+pub fn scan<'a>(input: &'a str) -> TokenArray<'a> {
     let mut scanner = Scanner::new(input);
     scanner.scan_tokens();
 
     // Check for lexical errors, then return tokens
     if scanner.had_error() {
-        return Err(scanner.tokens);
+        println!("{}", scanner.tokens);
+        std::process::exit(65);
     }
-    return Ok(scanner.tokens);
+    return scanner.tokens;
 }
 
 struct Scanner<'a> {
