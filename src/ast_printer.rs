@@ -1,4 +1,5 @@
 use crate::expr_syntax_tree::{Expr};
+use crate::statement_syntax_tree::Statement;
 use crate::token::Token;
 
 type Output = String;
@@ -11,6 +12,12 @@ impl AstPrinter {
         println!("{}", self.visit(expr));
     }
 
+    pub fn print_statements(&self, statements: &Vec<Statement>) {
+        for statement in statements {
+            println!("{}", self.visit_statement(statement));
+        }
+    }
+
     pub fn visit(&self, expr: &Expr) -> Output {
         match expr {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
@@ -18,9 +25,15 @@ impl AstPrinter {
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             Expr::Variable { name } => self.visit_variable(name),
-            Expr::Assign { name, value } => {
-                format!("(assign {} {})", name.lexeme, self.visit(value))
-            }
+            Expr::Assign { name, value } => self.visit_assign(name, value)
+        }
+    }
+
+    fn visit_statement(&self, statement: &Statement) -> Output {
+        match statement {
+            Statement::Expression { expression } => self.visit_expr_statement(expression),
+            Statement::Print { expression } => self.visit_print_statement(expression),
+            Statement::Var { name, initializer } => self.visit_var_statement(name, initializer),
         }
     }
 
@@ -42,5 +55,24 @@ impl AstPrinter {
 
     fn visit_variable(&self, name: &Token) -> Output {
         format!("(var {})", name.lexeme)
+    }
+
+    fn visit_assign(&self, name: &Token, value: &Expr) -> Output {
+        format!("(assign {} {})", name.lexeme, self.visit(value))
+    }
+
+    fn visit_expr_statement(&self, expression: &Expr) -> Output {
+        format!("(expr {})", self.visit(expression))
+    }
+
+    fn visit_print_statement(&self, expression: &Expr) -> Output {
+        format!("(print {})", self.visit(expression))
+    }
+
+    fn visit_var_statement(&self, name: &Token, initializer: &Option<Expr>) -> Output {
+        match initializer {
+            Some(init_expr) => format!("(var {} {})", name.lexeme, self.visit(init_expr)),
+            None => format!("(var {} nil)", name.lexeme),
+        }
     }
 }

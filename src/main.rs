@@ -99,6 +99,18 @@ fn main() {
             let mut interpreter = interpreter::Interpreter::new();
             interpreter.interpret(statements);
         }
+        "dbg" => {
+            // Get tokens from the scanner
+            let tokens = scan(&file_contents);
+            
+            // Create a parser and parse the tokens into statements
+            let mut parser = Parser::new(&tokens.tokens);
+            let statements = parser.parse();
+
+            // Print the AST of the statements
+            let ast_printer = ast_printer::AstPrinter;
+            ast_printer.print_statements(&statements);
+        }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
             return;
