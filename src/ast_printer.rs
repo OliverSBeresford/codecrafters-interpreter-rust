@@ -18,6 +18,9 @@ impl AstPrinter {
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             Expr::Variable { name } => self.visit_variable(name),
+            Expr::Assign { name, value } => {
+                format!("(assign {} {})", name.lexeme, self.visit(value))
+            }
         }
     }
 

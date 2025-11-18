@@ -70,6 +70,14 @@ impl Interpreter {
                 let value = self.environment.get(name.lexeme, name.line)?;
                 Ok(value.clone())
             }
+            Expr::Assign { name, value } => {
+                // Evaluate the value and assign it to the variable in the environment, returning any errors
+                let evaluated_value = self.evaluate(value)?;
+                self.environment.assign(name.lexeme, evaluated_value.clone(), name.line)?;
+
+                // Assigning a variables returns the assigned value
+                Ok(evaluated_value)
+            }
         }
     }
 

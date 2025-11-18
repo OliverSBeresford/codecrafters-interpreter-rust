@@ -185,7 +185,28 @@ impl<'a> Parser<'a> {
     }
 
     pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
-        return self.equality();
+        return self.assignment();
+    }
+
+    fn assignment(&mut self) -> Result<Expr<'a>, ParseError> {
+        let expr = self.equality()?;
+
+        if self.check(&[TokenType::Equal]) {
+            let equals = self.advance()?;
+            let value = self.assignment()?;
+            
+            // If the left-hand side is a variable, create an assignment expression
+            if let Expr::Variable { name } = expr {
+                return Ok(Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                });
+            }
+
+            return Self::error(&equals, "Invalid assignment target.");
+        }
+
+        return Ok(expr);
     }
 
     // Lowest precedence, going up from here

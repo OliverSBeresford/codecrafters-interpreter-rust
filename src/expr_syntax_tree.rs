@@ -2,6 +2,10 @@ use crate::token::Token;
 
 #[derive(Debug)]
 pub enum Expr<'a> {
+    Assign {
+        name: Token<'a>,
+        value: Box<Expr<'a>>,
+    },
     Binary {
         left: Box<Expr<'a>>,
         operator: Token<'a>,
