@@ -92,10 +92,6 @@ impl<'a> Parser<'a> {
         let _ = self.advance();
     }
 
-    pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
-        return self.equality();
-    }
-
     pub fn parse(&mut self) -> Vec<Statement<'a>> {
         let mut statements: Vec<Statement<'a>> = Vec::new();
 
@@ -186,6 +182,10 @@ impl<'a> Parser<'a> {
         return Ok(Statement::Expression {
             expression,
         });
+    }
+
+    pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
+        return self.equality();
     }
 
     // Lowest precedence, going up from here
