@@ -100,15 +100,19 @@ fn main() {
             interpreter.interpret(statements);
         }
         "dbg" => {
+            // Create an AST printer
+            let ast_printer = ast_printer::AstPrinter;
+
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
+            println!("Tokens:\n{}\n", tokens);
             
             // Create a parser and parse the tokens into statements
             let mut parser = Parser::new(&tokens.tokens);
             let statements = parser.parse();
 
             // Print the AST of the statements
-            let ast_printer = ast_printer::AstPrinter;
+            println!("AST of the statements:");
             ast_printer.print_statements(&statements);
         }
         _ => {
