@@ -43,13 +43,18 @@ impl Environment {
     }
 
     pub fn assign(&mut self, name: &str, value: Value, line: usize) -> Result<(), RuntimeError> {
-        if !self.values.contains_key(name) {
-            // You can only assign variables that are already defined
-            return Err(RuntimeError::new(line, format!("Undefined variable '{}'.", name)));
+        // If the variable exists in the current environment, update its value
+        if self.values.contains_key(name) {
+            self.values.insert(name.to_string(), value);
+            return Ok(());
         }
-        self.values.insert(name.to_string(), value);
 
-        // Return success (this function only has side effects)
-        Ok(())
+        // Otherwise, check the enclosing environment (if any)
+        if let Some(enclosing) = &mut self.enclosing {
+            return enclosing.assign(name, value, line);
+        }
+
+        // Variable is not defined in any environment, return an error
+        return Err(RuntimeError::new(line, format!("Undefined variable '{}'.", name)));
     }
 }
