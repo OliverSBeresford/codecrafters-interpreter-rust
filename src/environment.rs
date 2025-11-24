@@ -25,6 +25,16 @@ impl Environment {
     pub fn get(&self, name: &str, line: usize) -> Result<&Value, RuntimeError> {
         let result = self.values.get(name);
 
+        // If the variable is found in the current environment, return it
+        if let Some(value) = result {
+            return Ok(value);
+        }
+
+        // Otherwise, check the enclosing environment (if any)
+        if let Some(enclosing) = &self.enclosing {
+            return enclosing.get(name, line);
+        }
+
         // If the variable is not found, return an error
         if let None = result {
             return Err(RuntimeError::new(line, format!("Undefined variable '{}'.", name)));
