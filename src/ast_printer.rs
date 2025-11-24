@@ -34,6 +34,7 @@ impl AstPrinter {
             Statement::Expression { expression } => self.visit_expr_statement(expression),
             Statement::Print { expression } => self.visit_print_statement(expression),
             Statement::Var { name, initializer } => self.visit_var_statement(name, initializer),
+            Statement::Block { statements } => self.visit_block_statement(statements),
         }
     }
 
@@ -74,5 +75,14 @@ impl AstPrinter {
             Some(init_expr) => format!("(var {} {})", name.lexeme, self.visit(init_expr)),
             None => format!("(var {} nil)", name.lexeme),
         }
+    }
+
+    fn visit_block_statement(&self, statements: &Vec<Statement>) -> Output {
+        let mut result = String::from("(block");
+        for statement in statements {
+            result.push_str(&format!(" {}", self.visit_statement(statement)));
+        }
+        result.push(')');
+        result
     }
 }

@@ -2,6 +2,7 @@ use crate::value::Value;
 use std::collections::HashMap;
 use crate::runtime_error::RuntimeError;
 
+#[derive(Clone)]
 pub struct Environment {
     // Stores enclosing environment (if any)
     enclosing: Option<Box<Environment>>,

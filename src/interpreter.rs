@@ -91,6 +91,21 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    fn execute_block(&mut self, statements: &Vec<Statement>) -> Result<Value, RuntimeError> {
+        // Save the current environment
+        let previous_environment = self.environment.clone();
+
+        // Execute each statement in the block
+        for statement in statements {
+            self.execute(statement)?;
+        }
+
+        // Restore the previous environment
+        self.environment = previous_environment;
+
+        Ok(Value::Nil)
+    }
+
     fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
         match statement {
             Statement::Expression { expression } => {
@@ -108,6 +123,9 @@ impl Interpreter {
                 self.environment.define(name.lexeme.to_string(), value.clone());
                 return Ok(Value::Nil);
             }
+            Statement::Block { statements } => {
+                self.execute_block(statements)
+            }    
         }
     }
 

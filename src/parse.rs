@@ -153,6 +153,8 @@ impl<'a> Parser<'a> {
         // For now, only parse expression and print statements
         if self.check(&[TokenType::Keyword(Keyword::Print)]) {
             return self.print_statement();
+        } else if self.check(&[TokenType::LeftBrace]) {
+            return self.block_statement();
         } else {
             return self.expression_statement();
         }
@@ -181,6 +183,27 @@ impl<'a> Parser<'a> {
 
         return Ok(Statement::Expression {
             expression,
+        });
+    }
+
+    fn block_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the '{' token
+        let _left_brace = self.advance();
+
+        // Create a vector to hold the statements in the block
+        let mut statements: Vec<Statement<'a>> = Vec::new();
+
+        // Parse statements until we find a '}'
+        while !self.check(&[TokenType::RightBrace]) && self.current < self.tokens.len() - 1 {
+            let declaration = self.declaration()?;
+            statements.push(declaration);
+        }
+
+        // Consume the '}' token
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
+
+        return Ok(Statement::Block {
+            statements,
         });
     }
 

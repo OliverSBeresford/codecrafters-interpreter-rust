@@ -13,7 +13,10 @@ pub enum Statement<'a> {
     Var {
         name: Token<'a>,
         initializer: Option<Expr<'a>>,
-    }
+    },
+    Block {
+        statements: Vec<Statement<'a>>,
+    },
 }
 
 impl<'a> fmt::Debug for Statement<'a> {
@@ -33,6 +36,14 @@ impl<'a> fmt::Debug for Statement<'a> {
                 } else {
                     write!(f, "VarStatement(name: {}, initializer: None)", name.lexeme)
                 }
+            }
+            Statement::Block { statements } => {
+                let mut result = String::from("BlockStatement(\n");
+                for statement in statements {
+                    result.push_str(&format!("\t{}\n", format!("{:?}", statement).replace("\n", "\n\t")));
+                }
+                result.push(')');
+                write!(f, "{}", result)
             }
         }
     }
