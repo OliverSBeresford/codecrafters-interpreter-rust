@@ -3,13 +3,17 @@ use std::collections::HashMap;
 use crate::runtime_error::RuntimeError;
 
 pub struct Environment {
-    // implementation details would go here
+    // Stores enclosing environment (if any)
+    enclosing: Option<Box<Environment>>,
+
+    // Stores variable names and their associated values
     values: HashMap<String, Value>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
+    pub fn new(enclosing: Option<Box<Environment>>) -> Self {
         return Environment {
+            enclosing,
             values: HashMap::new(),
         }
     }
