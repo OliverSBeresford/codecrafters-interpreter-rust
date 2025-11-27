@@ -4,9 +4,10 @@ This repository contains a Rust implementation-in-progress of a small programmin
 
 Current capabilities:
 - Tokenize Lox source code into a stream of tokens
-- Parse expressions into an AST
+- Parse expressions and statements into an AST
 - Print a parenthesized representation of the AST (for debugging)
 - Evaluate expressions and print the result
+- Execute variable declaration, if, print, expression, and block statements
 
 ## Usage
 
@@ -69,8 +70,10 @@ EOF  null
 - tokenize: Scans the input and prints tokens (one per line), including EOF. Intended for validating the scanner.
 - parse: Parses the input into an expression AST and prints it in a readable parenthesized format.
 - evaluate: Parses and evaluates the input program and prints the resulting value.
+- run: Parses and runs the program line by line as a list of statements
+- dbg: Prints out all of the tokens and an AST representation of the statements and expressions in the program
 
-More commands (e.g., interpret) will be added as the interpreter evolves.
+More commands will be added as the interpreter evolves.
 
 ## References
 
