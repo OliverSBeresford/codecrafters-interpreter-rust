@@ -155,6 +155,8 @@ impl<'a> Parser<'a> {
             return self.print_statement();
         } else if self.check(&[TokenType::LeftBrace]) {
             return self.block_statement();
+        } else if self.check(&[TokenType::Keyword(Keyword::If)]) {
+            return self.if_statement();
         } else {
             return self.expression_statement();
         }
@@ -204,6 +206,36 @@ impl<'a> Parser<'a> {
 
         return Ok(Statement::Block {
             statements,
+        });
+    }
+
+    fn if_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the 'if' keyword
+        let _if_token = self.advance();
+
+        // Parse the condition expression and consume the parentheses
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
+
+        // Parse the then branch statement
+        let then_branch = Box::new(self.statement()?);
+
+        // Optional else branch
+        let else_branch = if self.check(&[TokenType::Keyword(Keyword::Else)]) {
+            // Consume the 'else' keyword
+            let _else_token = self.advance();
+
+            // Parse the else branch statement
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        return Ok(Statement::IfStatement {
+            condition,
+            then_branch,
+            else_branch,
         });
     }
 

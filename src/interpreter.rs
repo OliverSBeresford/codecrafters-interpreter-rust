@@ -106,6 +106,19 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &Box<Statement>, else_branch: &Option<Box<Statement>>) -> Result<Value, RuntimeError> {
+        let condition_value = self.evaluate(condition)?;
+
+        // Execute the then_branch if the condition is truthy, otherwise execute the else_branch if it exists
+        if Self::is_truthy(&condition_value) {
+            self.execute(then_branch)
+        } else if let Some(else_stmt) = else_branch {
+            self.execute(else_stmt)
+        } else {
+            Ok(Value::Nil)
+        }
+    }
+
     fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
         match statement {
             Statement::Expression { expression } => {
@@ -125,7 +138,10 @@ impl Interpreter {
             }
             Statement::Block { statements } => {
                 self.execute_block(statements)
-            }    
+            }
+            Statement::IfStatement { condition, then_branch, else_branch } => {
+                self.execute_if_statement(condition, then_branch, else_branch)
+            }
         }
     }
 

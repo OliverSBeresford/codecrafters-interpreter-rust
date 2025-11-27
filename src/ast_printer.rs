@@ -35,6 +35,7 @@ impl AstPrinter {
             Statement::Print { expression } => self.visit_print_statement(expression),
             Statement::Var { name, initializer } => self.visit_var_statement(name, initializer),
             Statement::Block { statements } => self.visit_block_statement(statements),
+            Statement::IfStatement { condition, then_branch, else_branch} => self.visit_if_statement(condition, then_branch, else_branch),
         }
     }
 
@@ -84,5 +85,12 @@ impl AstPrinter {
         }
         result.push(')');
         result
+    }
+
+    fn visit_if_statement(&self, condition: &Expr, then_branch: &Box<Statement>, else_branch: &Option<Box<Statement>>) -> Output {
+        match else_branch {
+            Some(else_stmt) => format!("(if {} then {} else {})", self.visit(condition), self.visit_statement(then_branch), self.visit_statement(else_stmt)),
+            None => format!("(if {} then {} else nil)", self.visit(condition), self.visit_statement(then_branch)),
+        }
     }
 }

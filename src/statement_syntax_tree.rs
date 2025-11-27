@@ -7,6 +7,11 @@ pub enum Statement<'a> {
     Expression {
         expression: Expr<'a>,
     },
+    IfStatement {
+        condition: Expr<'a>,
+        then_branch: Box<Statement<'a>>,
+        else_branch: Option<Box<Statement<'a>>>,
+    },
     Print {
         expression: Expr<'a>,
     },
@@ -21,7 +26,7 @@ pub enum Statement<'a> {
 
 impl<'a> fmt::Debug for Statement<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ast_printer = AstPrinter;
+        let ast_printer: AstPrinter = AstPrinter;
 
         match self {
             Statement::Expression { expression } => {
@@ -44,6 +49,15 @@ impl<'a> fmt::Debug for Statement<'a> {
                 }
                 result.push(')');
                 write!(f, "{}", result)
+            }
+            Statement::IfStatement { condition, then_branch, else_branch } => {
+                if let Some(else_stmt) = else_branch {
+                    write!(f, "IfStatement(\n\tcondition: {},\n\tthen_branch: {:?},\n\telse_branch: {:?}\n)", 
+                        ast_printer.visit(condition), then_branch, else_stmt)
+                } else {
+                    write!(f, "IfStatement(\n\tcondition: {},\n\tthen_branch: {:?},\n\telse_branch: None\n)", 
+                        ast_printer.visit(condition), then_branch)
+                }
             }
         }
     }
