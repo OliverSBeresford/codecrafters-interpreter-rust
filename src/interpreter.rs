@@ -2,7 +2,7 @@ use crate::expr_syntax_tree::{Expr};
 use crate::statement_syntax_tree::Statement;
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
-use crate::environment::Environment;
+use crate::environment::{EnvRef, Environment};
 use std::fmt;
 use crate::value::Value;
 
@@ -24,7 +24,7 @@ impl fmt::Display for Value {
 }
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: EnvRef,
 }
 
 impl Interpreter {
@@ -67,7 +67,7 @@ impl Interpreter {
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             // Handle variable expressions
             Expr::Variable { name } => {
-                let value = self.environment.get(name.lexeme, name.line)?;
+                let value = self.environment.borrow().get(name.lexeme, name.line)?;
                 Ok(value.clone())
             }
             Expr::Assign { name, value } => self.assign_variable(name, value),
@@ -87,8 +87,9 @@ impl Interpreter {
     }
 
     fn execute_block(&mut self, statements: &Vec<Statement>) -> Result<Value, RuntimeError> {
-        // Save the current environment
+        // Create a new environment enclosed by the current one
         let previous_environment = self.environment.clone();
+        self.environment = Environment::new(Some(previous_environment.clone()));
 
         // Execute each statement in the block
         for statement in statements {
@@ -123,7 +124,7 @@ impl Interpreter {
         }
 
         // Define the variable in the current environment
-        self.environment.define(name.lexeme.to_string(), value.clone());
+        self.environment.borrow_mut().define(name.lexeme.to_string(), value.clone());
         return Ok(Value::Nil);
     }
 
@@ -285,7 +286,7 @@ impl Interpreter {
         // Evaluate the value expression
         let evaluated_value = self.evaluate(value_expr)?;
         // Assign the value to the variable in the environment
-        self.environment.assign(name.lexeme, evaluated_value.clone(), name.line)?;
+        self.environment.borrow_mut().assign(name.lexeme, evaluated_value.clone(), name.line)?;
         // Return the assigned value
         Ok(evaluated_value)
     }
