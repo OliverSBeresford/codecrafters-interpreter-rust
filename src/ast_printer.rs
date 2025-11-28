@@ -65,6 +65,14 @@ impl AstPrinter {
         format!("(assign {} {})", name.lexeme, self.visit(value))
     }
 
+    fn visit_logic_or(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(or {} {})", self.visit(left), self.visit(right))
+    }
+
+    fn visit_logic_and(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(and {} {})", self.visit(left), self.visit(right))
+    }
+
     fn visit_expr_statement(&self, expression: &Expr) -> Output {
         format!("(expr {})", self.visit(expression))
     }
@@ -94,13 +102,5 @@ impl AstPrinter {
             Some(else_stmt) => format!("(if {} then {} else {})", self.visit(condition), self.visit_statement(then_branch), self.visit_statement(else_stmt)),
             None => format!("(if {} then {} else nil)", self.visit(condition), self.visit_statement(then_branch)),
         }
-    }
-
-    fn visit_logic_or(&self, left: &Expr, right: &Expr) -> Output {
-        format!("(or {} {})", self.visit(left), self.visit(right))
-    }
-
-    fn visit_logic_and(&self, left: &Expr, right: &Expr) -> Output {
-        format!("(and {} {})", self.visit(left), self.visit(right))
     }
 }
