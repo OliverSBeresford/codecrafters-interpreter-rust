@@ -157,6 +157,8 @@ impl<'a> Parser<'a> {
             return self.block_statement();
         } else if self.check(&[TokenType::Keyword(Keyword::If)]) {
             return self.if_statement();
+        } else if self.check(&[TokenType::Keyword(Keyword::While)]) {
+            return self.while_statement();
         } else {
             return self.expression_statement();
         }
@@ -236,6 +238,24 @@ impl<'a> Parser<'a> {
             condition,
             then_branch,
             else_branch,
+        });
+    }
+
+    fn while_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the 'while' keyword
+        let _while_token = self.advance();
+
+        // Parse the condition expression (decides whether to run the loop) and consume the parentheses
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after while condition.")?;
+
+        // Parse the body statement (the thing that gets repeated)
+        let body = Box::new(self.statement()?);
+
+        return Ok(Statement::While {
+            condition,
+            body,
         });
     }
 

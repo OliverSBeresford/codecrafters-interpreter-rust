@@ -19,6 +19,10 @@ pub enum Statement<'a> {
         name: Token<'a>,
         initializer: Option<Expr<'a>>,
     },
+    While {
+        condition: Expr<'a>,
+        body: Box<Statement<'a>>,
+    },
     Block {
         statements: Vec<Statement<'a>>,
     },
@@ -58,6 +62,10 @@ impl<'a> fmt::Debug for Statement<'a> {
                     write!(f, "IfStatement(\n\tcondition: {},\n\tthen_branch: {:?},\n\telse_branch: None\n)", 
                         ast_printer.visit(condition), then_branch)
                 }
+            }
+            Statement::While { condition, body } => {
+                write!(f, "WhileStatement(\n\tcondition: {},\n\tbody: {:?}\n)", 
+                    ast_printer.visit(condition), body)
             }
         }
     }

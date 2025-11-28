@@ -38,6 +38,7 @@ impl AstPrinter {
             Statement::Var { name, initializer } => self.visit_var_statement(name, initializer),
             Statement::Block { statements } => self.visit_block_statement(statements),
             Statement::If { condition, then_branch, else_branch} => self.visit_if_statement(condition, then_branch, else_branch),
+            Statement::While { condition, body } => self.visit_while_statement(condition, body),
         }
     }
 
@@ -102,5 +103,9 @@ impl AstPrinter {
             Some(else_stmt) => format!("(if {} then {} else {})", self.visit(condition), self.visit_statement(then_branch), self.visit_statement(else_stmt)),
             None => format!("(if {} then {} else nil)", self.visit(condition), self.visit_statement(then_branch)),
         }
+    }
+
+    fn visit_while_statement(&self, condition: &Expr, body: &Box<Statement>) -> Output {
+        format!("(while {} \ndo {})", self.visit(condition), self.visit_statement(body))
     }
 }

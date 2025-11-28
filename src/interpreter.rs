@@ -127,13 +127,24 @@ impl Interpreter {
         return Ok(Value::Nil);
     }
 
+    fn execute_while_statement(&mut self, condition: &Expr, body: &Box<Statement>) -> Result<Value, RuntimeError> {
+        // Evaluate the condition and execute the body while the condition is truthy
+        while Self::is_truthy(&self.evaluate(condition)?) {
+            self.execute(body)?;
+        }
+
+        // Doesn't return anything
+        Ok(Value::Nil)
+    }
+
     fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
         match statement {
             Statement::Expression { expression } => self.execute_expression(&expression),
             Statement::Print { expression } => self.execute_print(&expression),
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
             Statement::Block { statements } => self.execute_block(statements),
-            Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch)
+            Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch),
+            Statement::While { condition, body } => self.execute_while_statement(condition, body),
         }
     }
 
