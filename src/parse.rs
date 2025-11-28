@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
     }
 
     fn assignment(&mut self) -> Result<Expr<'a>, ParseError> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
 
         if self.check(&[TokenType::Equal]) {
             let equals = self.advance()?;
@@ -259,6 +259,38 @@ impl<'a> Parser<'a> {
             }
 
             return Self::error(&equals, "Invalid assignment target.");
+        }
+
+        return Ok(expr);
+    }
+
+    fn logic_or(&mut self) -> Result<Expr<'a>, ParseError> {
+        let mut expr = self.logic_and()?;
+
+        while self.check(&[TokenType::Keyword(Keyword::Or)]) {
+            let operator = self.advance()?;
+            let right = self.logic_and()?;
+
+            expr = Expr::LogicOr {
+                left: Box::new(expr),
+                right: Box::new(right),
+            };
+        }
+
+        return Ok(expr);
+    }
+
+    fn logic_and(&mut self) -> Result<Expr<'a>, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.check(&[TokenType::Keyword(Keyword::And)]) {
+            let operator = self.advance()?;
+            let right = self.equality()?;
+
+            expr = Expr::LogicAnd {
+                left: Box::new(expr),
+                right: Box::new(right),
+            };
         }
 
         return Ok(expr);

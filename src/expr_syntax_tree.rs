@@ -6,6 +6,16 @@ pub enum Expr<'a> {
         name: Token<'a>,
         value: Box<Expr<'a>>,
     },
+    LogicOr {
+        left: Box<Expr<'a>>,
+        // operator: Token<'a>, Right now we don't use the operator token, but it's here for completeness
+        right: Box<Expr<'a>>,
+    },
+    LogicAnd {
+        left: Box<Expr<'a>>,
+        // operator: Token<'a>, Right now we don't use the operator token, but it's here for completeness
+        right: Box<Expr<'a>>,
+    },
     Binary {
         left: Box<Expr<'a>>,
         operator: Token<'a>,

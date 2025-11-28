@@ -25,7 +25,9 @@ impl AstPrinter {
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             Expr::Variable { name } => self.visit_variable(name),
-            Expr::Assign { name, value } => self.visit_assign(name, value)
+            Expr::Assign { name, value } => self.visit_assign(name, value),
+            Expr::LogicOr { left, right } => self.visit_logic_or(left, right),
+            Expr::LogicAnd { left, right } => self.visit_logic_and(left, right),
         }
     }
 
@@ -92,5 +94,13 @@ impl AstPrinter {
             Some(else_stmt) => format!("(if {} then {} else {})", self.visit(condition), self.visit_statement(then_branch), self.visit_statement(else_stmt)),
             None => format!("(if {} then {} else nil)", self.visit(condition), self.visit_statement(then_branch)),
         }
+    }
+
+    fn visit_logic_or(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(or {} {})", self.visit(left), self.visit(right))
+    }
+
+    fn visit_logic_and(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(and {} {})", self.visit(left), self.visit(right))
     }
 }

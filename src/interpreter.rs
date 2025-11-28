@@ -70,14 +70,9 @@ impl Interpreter {
                 let value = self.environment.get(name.lexeme, name.line)?;
                 Ok(value.clone())
             }
-            Expr::Assign { name, value } => {
-                // Evaluate the value and assign it to the variable in the environment, returning any errors
-                let evaluated_value = self.evaluate(value)?;
-                self.environment.assign(name.lexeme, evaluated_value.clone(), name.line)?;
-
-                // Assigning a variables returns the assigned value
-                Ok(evaluated_value)
-            }
+            Expr::Assign { name, value } => self.assign_variable(name, value),
+            Expr::LogicOr { left, right } => self.logic_or(left, right),
+            Expr::LogicAnd { left, right } => self.logic_and(left, right),
         }
     }
 
@@ -275,6 +270,43 @@ impl Interpreter {
             // Return the logical NOT of the truthiness of the right-hand side
             TokenType::Bang => Ok(Value::Bool(!Self::is_truthy(&right_value))),
             _ => Self::error(operator, &format!("Unsupported unary operator: {:?}", operator.token_type)),
+        }
+    }
+
+    fn assign_variable(&mut self, name: &Token, value_expr: &Expr) -> Result<Value, RuntimeError> {
+        // Evaluate the value expression
+        let evaluated_value = self.evaluate(value_expr)?;
+        // Assign the value to the variable in the environment
+        self.environment.assign(name.lexeme, evaluated_value.clone(), name.line)?;
+        // Return the assigned value
+        Ok(evaluated_value)
+    }
+
+    fn logic_or(&mut self, left: &Expr, right: &Expr) -> Result<Value, RuntimeError> {
+        // Evaluate the left expression
+        let left_value = self.evaluate(left)?;
+
+        // If the left value is truthy, return it, because now we know at least one operand is truthy
+        if Self::is_truthy(&left_value) {
+            Ok(left_value)
+        } 
+        // Now evaluate and return the right expression
+        else {
+            self.evaluate(right)
+        }
+    }
+
+    fn logic_and(&mut self, left: &Expr, right: &Expr) -> Result<Value, RuntimeError> {
+        // Evaluate the left expression
+        let left_value = self.evaluate(left)?;
+
+        // If the left value is falsy, return it, because now we know at least one operand is falsy
+        if !Self::is_truthy(&left_value) {
+            Ok(left_value)
+        }
+        // Now evaluate and return the right expression
+        else {
+            self.evaluate(right)
         }
     }
 }
