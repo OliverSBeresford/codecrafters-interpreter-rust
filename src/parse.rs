@@ -268,7 +268,7 @@ impl<'a> Parser<'a> {
         let mut expr = self.logic_and()?;
 
         while self.check(&[TokenType::Keyword(Keyword::Or)]) {
-            let operator = self.advance()?;
+            let _operator = self.advance()?;
             let right = self.logic_and()?;
 
             expr = Expr::LogicOr {
@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
         let mut expr = self.equality()?;
 
         while self.check(&[TokenType::Keyword(Keyword::And)]) {
-            let operator = self.advance()?;
+            let _operator = self.advance()?;
             let right = self.equality()?;
 
             expr = Expr::LogicAnd {
