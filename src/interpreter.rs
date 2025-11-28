@@ -134,7 +134,7 @@ impl Interpreter {
             Statement::Block { statements } => {
                 self.execute_block(statements)
             }
-            Statement::IfStatement { condition, then_branch, else_branch } => {
+            Statement::If { condition, then_branch, else_branch } => {
                 self.execute_if_statement(condition, then_branch, else_branch)
             }
         }

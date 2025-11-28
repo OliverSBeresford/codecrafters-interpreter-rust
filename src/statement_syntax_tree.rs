@@ -7,7 +7,7 @@ pub enum Statement<'a> {
     Expression {
         expression: Expr<'a>,
     },
-    IfStatement {
+    If {
         condition: Expr<'a>,
         then_branch: Box<Statement<'a>>,
         else_branch: Option<Box<Statement<'a>>>,
@@ -50,7 +50,7 @@ impl<'a> fmt::Debug for Statement<'a> {
                 result.push(')');
                 write!(f, "{}", result)
             }
-            Statement::IfStatement { condition, then_branch, else_branch } => {
+            Statement::If { condition, then_branch, else_branch } => {
                 if let Some(else_stmt) = else_branch {
                     write!(f, "IfStatement(\n\tcondition: {},\n\tthen_branch: {:?},\n\telse_branch: {:?}\n)", 
                         ast_printer.visit(condition), then_branch, else_stmt)

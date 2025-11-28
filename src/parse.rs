@@ -232,7 +232,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        return Ok(Statement::IfStatement {
+        return Ok(Statement::If {
             condition,
             then_branch,
             else_branch,

@@ -37,7 +37,7 @@ impl AstPrinter {
             Statement::Print { expression } => self.visit_print_statement(expression),
             Statement::Var { name, initializer } => self.visit_var_statement(name, initializer),
             Statement::Block { statements } => self.visit_block_statement(statements),
-            Statement::IfStatement { condition, then_branch, else_branch} => self.visit_if_statement(condition, then_branch, else_branch),
+            Statement::If { condition, then_branch, else_branch} => self.visit_if_statement(condition, then_branch, else_branch),
         }
     }
 
