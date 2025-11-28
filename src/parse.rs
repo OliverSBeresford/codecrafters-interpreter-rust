@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Result<Statement<'a>, ParseError> {
-        // For now, only parse expression and print statements
+        // Parse different kinds of statements based on the current token
         if self.check(&[TokenType::Keyword(Keyword::Print)]) {
             return self.print_statement();
         } else if self.check(&[TokenType::LeftBrace]) {
