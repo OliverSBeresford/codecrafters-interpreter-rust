@@ -114,29 +114,26 @@ impl Interpreter {
         }
     }
 
+    fn execute_var_statement(&mut self, name: &Token, initializer: &Option<Expr>) -> Result<Value, RuntimeError> {
+        // Evaluate the initializer expression if it exists, otherwise use nil
+        let mut value: Value = Value::Nil;
+        if let Some(init_expr) = initializer {
+            let evaluated_value = self.evaluate(init_expr)?;
+            value = evaluated_value;
+        }
+
+        // Define the variable in the current environment
+        self.environment.define(name.lexeme.to_string(), value.clone());
+        return Ok(Value::Nil);
+    }
+
     fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
         match statement {
-            Statement::Expression { expression } => {
-                self.execute_expression(&expression)
-            }
-            Statement::Print { expression } => {
-                self.execute_print(&expression)
-            }
-            Statement::Var { name, initializer } => {
-                let mut value: Value = Value::Nil;
-                if let Some(init_expr) = initializer {
-                    let evaluated_value = self.evaluate(init_expr)?;
-                    value = evaluated_value;
-                }
-                self.environment.define(name.lexeme.to_string(), value.clone());
-                return Ok(Value::Nil);
-            }
-            Statement::Block { statements } => {
-                self.execute_block(statements)
-            }
-            Statement::If { condition, then_branch, else_branch } => {
-                self.execute_if_statement(condition, then_branch, else_branch)
-            }
+            Statement::Expression { expression } => self.execute_expression(&expression),
+            Statement::Print { expression } => self.execute_print(&expression),
+            Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
+            Statement::Block { statements } => self.execute_block(statements),
+            Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch)
         }
     }
 
