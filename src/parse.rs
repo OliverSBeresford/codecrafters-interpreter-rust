@@ -1,3 +1,4 @@
+use crate::token::Literal;
 use crate::token::Token;
 use crate::token::TokenType;
 use crate::expr_syntax_tree::Expr;
@@ -159,6 +160,8 @@ impl<'a> Parser<'a> {
             return self.if_statement();
         } else if self.check(&[TokenType::Keyword(Keyword::While)]) {
             return self.while_statement();
+        } else if self.check(&[TokenType::Keyword(Keyword::For)]) {
+            return self.for_statement();
         } else {
             return self.expression_statement();
         }
@@ -257,6 +260,78 @@ impl<'a> Parser<'a> {
             condition,
             body,
         });
+    }
+
+    // This is not a new kind of statement, we are just desugaring a for loop into a while loop and some extra statements
+    fn for_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+        // Consume the 'for' keyword
+        let _for_token = self.advance();
+
+        // Consume the '(' token
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+
+        // Parse the initializer (can be a variable declaration, expression statement, or empty)
+        let initializer = if self.check(&[TokenType::Semicolon]) {
+            self.consume_any();
+            None
+        } else if self.check(&[TokenType::Keyword(Keyword::Var)]) {
+            // Initializer is a variable declaration
+            Some(self.var_declaration()?)
+        } else {
+            // Initializer is an expression statement
+            Some(self.expression_statement()?)
+        };
+
+        // Parse the condition (can be empty, which defaults to 'true')
+        let condition = if !self.check(&[TokenType::Semicolon]) {
+            self.expression()?
+        } else {
+            // Consume the ';' token
+            Expr::Literal {
+                value: Token {
+                    token_type: TokenType::Keyword(True),
+                    lexeme: "true",
+                    literal: Some(Literal::Boolean(true)),
+                    line: 0
+                }
+            }
+        };
+        self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
+
+        // Parse the increment (can be empty)
+        let increment = if !self.check(&[TokenType::RightParen]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+
+        // Parse the body statement
+        let mut body: Statement = self.statement()?;
+
+        if increment.is_some() {
+            // Combine what's in the body with the increment expression
+            body = Statement::Block {
+                statements: vec![body, Statement::Expression {
+                    expression: increment.unwrap()
+                }]
+            };
+        }
+
+        // Create a while statement with the condition specified and the body we made (with the increment)
+        body = Statement::While {
+            condition,
+            body: Box::new(body)
+        };
+
+        // If there is an initializer, add it as a statement before the while loop
+        if initializer.is_some() {
+            body = Statement::Block {
+                statements: vec![initializer.unwrap(), body]
+            }
+        }
+
+        return Ok(body);
     }
 
     pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
