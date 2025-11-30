@@ -28,6 +28,12 @@ Examples:
 
 # Evaluate the expression(s) and print the result
 ./your_program.sh evaluate test.lox
+
+# Run the program
+./your_program.sh run test.lox
+
+# Print out all tokens and then all statements in debug mode
+./your_program.sh dbg test.lox
 ```
 
 ## Example
