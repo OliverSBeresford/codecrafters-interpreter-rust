@@ -1,6 +1,6 @@
 # A tiny Lox interpreter in Rust
 
-This repository contains a Rust implementation-in-progress of a small programming language inspired by Lox from the book Crafting Interpreters. The goal is to build a tokenizer, parser (producing an AST), and a tree-walk interpreter.
+This repository contains a Rust implementation (in progress) of a small programming language inspired by Lox from the book Crafting Interpreters. The goal is to build a tokenizer, parser (producing an AST), and a tree-walk interpreter.
 
 Current capabilities:
 - Tokenize Lox source code into a stream of tokens
