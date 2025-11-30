@@ -7,7 +7,7 @@ Current capabilities:
 - Parse expressions and statements into an AST
 - Print a parenthesized representation of the AST (for debugging)
 - Evaluate expressions and print the result
-- Execute variable declaration, if/else, print, expression, block, while, and for statements
+- Execute variable declaration, if, print, expression, and block statements
 
 ## Usage
 
@@ -78,4 +78,4 @@ More commands will be added as the interpreter evolves.
 ## References
 
 - The language design is based on Lox: https://craftinginterpreters.com/the-lox-language.html
-- This project follows ideas from the book Crafting Interpreters by Robert Nystrom: https://craftinginterpreters.com/
+- This project follows ideas from the excellent book Crafting Interpreters by Robert Nystrom: https://craftinginterpreters.com/
