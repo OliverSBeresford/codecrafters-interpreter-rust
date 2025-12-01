@@ -1,8 +1,12 @@
-var a = 0;
-var temp;
+var goal = 500;
+var a = 1;
+var b = 1;
+var temp = 0;
 
-for (var b = 1; a < 10000; b = temp + b) {
-  print a;
-  temp = a;
-  a = b;
+for (var i = 0; i < goal; i = i + 1) {
+  temp = b;
+  b = a + b;
+  a = temp;
 }
+
+print b;
