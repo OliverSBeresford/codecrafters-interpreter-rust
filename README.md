@@ -7,7 +7,7 @@ Current capabilities:
 - Parse expressions and statements into an AST
 - Print a parenthesized representation of the AST (for debugging)
 - Evaluate expressions and print the result
-- Execute variable declaration, if/else, print, expression, and block statements
+- Execute variable declaration, if/else, print, expression, for, while, and block statements
 
 ## Usage
 
