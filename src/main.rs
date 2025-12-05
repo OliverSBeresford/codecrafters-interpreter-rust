@@ -52,7 +52,7 @@ fn main() {
             let tokens = scan(&file_contents);
             
             // Create a parser and parse the tokens into an AST
-            let mut parser = Parser::new(&tokens.tokens);
+            let mut parser = Parser::new(tokens.tokens);
             let expression = parser.expression();
 
             // Print the AST using the visit method
@@ -71,7 +71,7 @@ fn main() {
             let tokens = scan(&file_contents);
             
             // Create a parser and parse the tokens into an AST
-            let mut parser = Parser::new(&tokens.tokens);
+            let mut parser = Parser::new(tokens.tokens);
             let expression = parser.expression().unwrap_or_else(|error| {
                 eprintln!("{}", error);
                 std::process::exit(65);
@@ -92,7 +92,7 @@ fn main() {
             let tokens = scan(&file_contents);
             
             // Create a parser and parse the tokens into statements
-            let mut parser = Parser::new(&tokens.tokens);
+            let mut parser = Parser::new(tokens.tokens);
             let statements = parser.parse();
 
             // Create an interpreter and execute the statements
@@ -108,7 +108,7 @@ fn main() {
             println!("Tokens:\n{}\n", tokens);
             
             // Create a parser and parse the tokens into statements
-            let mut parser = Parser::new(&tokens.tokens);
+            let mut parser = Parser::new(tokens.tokens);
             let statements = parser.parse();
 
             // Print the AST of the statements

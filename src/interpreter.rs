@@ -67,7 +67,7 @@ impl Interpreter {
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             // Handle variable expressions
             Expr::Variable { name } => {
-                let value = self.environment.borrow().get(name.lexeme, name.line)?;
+                let value = self.environment.borrow().get(&name.lexeme, name.line)?;
                 Ok(value.clone())
             }
             Expr::Assign { name, value } => self.assign_variable(name, value),
@@ -286,7 +286,7 @@ impl Interpreter {
         // Evaluate the value expression
         let evaluated_value = self.evaluate(value_expr)?;
         // Assign the value to the variable in the environment
-        self.environment.borrow_mut().assign(name.lexeme, evaluated_value.clone(), name.line)?;
+        self.environment.borrow_mut().assign(&name.lexeme, evaluated_value.clone(), name.line)?;
         // Return the assigned value
         Ok(evaluated_value)
     }

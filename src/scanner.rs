@@ -7,17 +7,17 @@ use crate::token::TokenType;
 use crate::token::Literal;
 use crate::token::Keyword;
 
-pub struct TokenArray<'a> {
-    pub tokens: Vec<Token<'a>>,
+pub struct TokenArray {
+    pub tokens: Vec<Token>,
 }
 
-impl<'a> TokenArray<'a> {
-    pub fn push(&mut self, token: Token<'a>) {
+impl TokenArray {
+    pub fn push(&mut self, token: Token) {
         self.tokens.push(token);
     }
 }
 
-impl fmt::Display for TokenArray<'_> {
+impl fmt::Display for TokenArray {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for token in &self.tokens {
             writeln!(f, "{}", token)?;
@@ -26,7 +26,7 @@ impl fmt::Display for TokenArray<'_> {
     }
 }
 
-pub fn scan<'a>(input: &'a str) -> TokenArray<'a> {
+pub fn scan(input: &str) -> TokenArray {
     let mut scanner = Scanner::new(input);
     scanner.scan_tokens();
 
@@ -45,7 +45,7 @@ struct Scanner<'a> {
     start: usize,
     current: usize,
     lexical_error: bool,
-    pub tokens: TokenArray<'a>,
+    pub tokens: TokenArray,
 }
 
 impl<'a> Scanner<'a> {
@@ -77,14 +77,14 @@ impl<'a> Scanner<'a> {
     }
 
     // Get the current lexeme being scanned
-    fn get_lexeme(&self) -> &'a str {
+    fn get_lexeme(&self) -> &str {
         &self.input[self.start..self.current]
     }
 
     // Create a new token and add it to the tokens vector
     fn make_token(&mut self, token_type: TokenType, literal: Option<Literal>) {
         let lexeme = self.get_lexeme();
-        let token = Token::new(token_type, lexeme, literal, self.line);
+        let token = Token::new(token_type, lexeme.to_string(), literal, self.line);
         self.tokens.push(token);
     }
 

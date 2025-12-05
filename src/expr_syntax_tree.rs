@@ -1,37 +1,37 @@
 use crate::token::Token;
 
 #[derive(Debug)]
-pub enum Expr<'a> {
+pub enum Expr {
     Assign {
-        name: Token<'a>,
-        value: Box<Expr<'a>>,
+        name: Token,
+        value: Box<Expr>,
     },
     LogicOr {
-        left: Box<Expr<'a>>,
-        // operator: Token<'a>, Right now we don't use the operator token, but it's here for completeness
-        right: Box<Expr<'a>>,
+        left: Box<Expr>,
+        // operator: Token, Right now we don't use the operator token, but it's here for completeness
+        right: Box<Expr>,
     },
     LogicAnd {
-        left: Box<Expr<'a>>,
-        // operator: Token<'a>, Right now we don't use the operator token, but it's here for completeness
-        right: Box<Expr<'a>>,
+        left: Box<Expr>,
+        // operator: Token, Right now we don't use the operator token, but it's here for completeness
+        right: Box<Expr>,
     },
     Binary {
-        left: Box<Expr<'a>>,
-        operator: Token<'a>,
-        right: Box<Expr<'a>>,
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
     },
     Literal {
-        value: Token<'a>,
+        value: Token,
     },
     Grouping {
-        expression: Box<Expr<'a>>,
+        expression: Box<Expr>,
     },
     Unary {
-        operator: Token<'a>,
-        right: Box<Expr<'a>>,
+        operator: Token,
+        right: Box<Expr>,
     },
     Variable {
-        name: Token<'a>,
+        name: Token,
     },
 }

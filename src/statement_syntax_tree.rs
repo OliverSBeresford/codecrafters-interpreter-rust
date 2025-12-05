@@ -3,32 +3,32 @@ use crate::token::Token;
 use std::fmt;
 use crate::ast_printer::AstPrinter;
 
-pub enum Statement<'a> {
+pub enum Statement {
     Expression {
-        expression: Expr<'a>,
+        expression: Expr,
     },
     If {
-        condition: Expr<'a>,
-        then_branch: Box<Statement<'a>>,
-        else_branch: Option<Box<Statement<'a>>>,
+        condition: Expr,
+        then_branch: Box<Statement>,
+        else_branch: Option<Box<Statement>>,
     },
     Print {
-        expression: Expr<'a>,
+        expression: Expr,
     },
     Var {
-        name: Token<'a>,
-        initializer: Option<Expr<'a>>,
+        name: Token,
+        initializer: Option<Expr>,
     },
     While {
-        condition: Expr<'a>,
-        body: Box<Statement<'a>>,
+        condition: Expr,
+        body: Box<Statement>,
     },
     Block {
-        statements: Vec<Statement<'a>>,
+        statements: Vec<Statement>,
     },
 }
 
-impl<'a> fmt::Debug for Statement<'a> {
+impl fmt::Debug for Statement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ast_printer: AstPrinter = AstPrinter;
 

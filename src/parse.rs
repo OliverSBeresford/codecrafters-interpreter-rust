@@ -7,13 +7,13 @@ use crate::token::Keyword;
 use crate::statement_syntax_tree::Statement;
 use crate::parse_error::ParseError;
 
-pub struct Parser<'a> {
-    tokens: &'a Vec<Token<'a>>,
+pub struct Parser {
+    tokens: Vec<Token>,
     current: usize,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a Vec<Token<'a>>) -> Self {
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
             current: 0,
@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
     }
 
     // Report a parse error
-    fn error<T>(token: &Token<'a>, message: &str) -> Result<T, ParseError> {
+    fn error<T>(token: &Token, message: &str) -> Result<T, ParseError> {
         if token.token_type == TokenType::Eof {
             return Err(ParseError::new(token.line, format!("Error at end: {}", message)));
         } else {
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
     }
 
     // Return the current token and advance the parser
-    fn advance(&mut self) -> Result<Token<'a>, ParseError> {
+    fn advance(&mut self) -> Result<Token, ParseError> {
         if self.current < self.tokens.len() {
             let token = self.tokens[self.current].clone();
             self.current += 1;
@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
     }
 
     // Get the current token without advancing the parser
-    fn current_token(&self) -> Option<&Token<'a>> {
+    fn current_token(&self) -> Option<&Token> {
         return self.tokens.get(self.current);
     }
 
@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
     }
 
     // Consume a token of the expected type, or return an error
-    fn consume(&mut self, expected: TokenType, error_message: &str) -> Result<Token<'a>, ParseError> {
+    fn consume(&mut self, expected: TokenType, error_message: &str) -> Result<Token, ParseError> {
         let current_token = self.advance()?;
 
         // If the current token is not of the expected type or doesn't exist, return an error
@@ -93,8 +93,8 @@ impl<'a> Parser<'a> {
         let _ = self.advance();
     }
 
-    pub fn parse(&mut self) -> Vec<Statement<'a>> {
-        let mut statements: Vec<Statement<'a>> = Vec::new();
+    pub fn parse(&mut self) -> Vec<Statement> {
+        let mut statements: Vec<Statement> = Vec::new();
 
         // Parse statements until the end of the token stream (-1 for EOF)
         while self.current < self.tokens.len() - 1 {
@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
         return statements;
     }
 
-    fn declaration(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn declaration(&mut self) -> Result<Statement, ParseError> {
         // For now, only parse variable declarations and statements
         if self.check(&[TokenType::Keyword(Keyword::Var)]) {
             return self.var_declaration().or_else(|err: ParseError| {
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn var_declaration(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn var_declaration(&mut self) -> Result<Statement, ParseError> {
         // Consume the 'var' keyword
         let _var_token = self.advance();
 
@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn statement(&mut self) -> Result<Statement, ParseError> {
         // Parse different kinds of statements based on the current token
         if self.check(&[TokenType::Keyword(Keyword::Print)]) {
             return self.print_statement();
@@ -167,7 +167,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn print_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn print_statement(&mut self) -> Result<Statement, ParseError> {
         // Consume the 'print' keyword
         let _print_token = self.advance();
 
@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn expression_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn expression_statement(&mut self) -> Result<Statement, ParseError> {
         let expression = self.expression()?;
 
         // Consume the semicolon at the end of the expression statement
@@ -193,12 +193,12 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn block_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn block_statement(&mut self) -> Result<Statement, ParseError> {
         // Consume the '{' token
         let _left_brace = self.advance();
 
         // Create a vector to hold the statements in the block
-        let mut statements: Vec<Statement<'a>> = Vec::new();
+        let mut statements: Vec<Statement> = Vec::new();
 
         // Parse statements until we find a '}'
         while !self.check(&[TokenType::RightBrace]) && self.current < self.tokens.len() - 1 {
@@ -214,7 +214,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn if_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn if_statement(&mut self) -> Result<Statement, ParseError> {
         // Consume the 'if' keyword
         let _if_token = self.advance();
 
@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    fn while_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn while_statement(&mut self) -> Result<Statement, ParseError> {
         // Consume the 'while' keyword
         let _while_token = self.advance();
 
@@ -263,7 +263,7 @@ impl<'a> Parser<'a> {
     }
 
     // This is not a new kind of statement, we are just desugaring a for loop into a while loop and some extra statements
-    fn for_statement(&mut self) -> Result<Statement<'a>, ParseError> {
+    fn for_statement(&mut self) -> Result<Statement, ParseError> {
         // Consume the 'for' keyword
         let _for_token = self.advance();
 
@@ -289,8 +289,8 @@ impl<'a> Parser<'a> {
             // Consume the ';' token
             Expr::Literal {
                 value: Token {
-                    token_type: TokenType::Keyword(True),
-                    lexeme: "true",
+                    token_type: TokenType::Keyword(Keyword::True),
+                    lexeme: "true".to_string(),
                     literal: Some(Literal::Boolean(true)),
                     line: 0
                 }
@@ -334,11 +334,11 @@ impl<'a> Parser<'a> {
         return Ok(body);
     }
 
-    pub fn expression(&mut self) -> Result<Expr<'a>, ParseError> {
+    pub fn expression(&mut self) -> Result<Expr, ParseError> {
         return self.assignment();
     }
 
-    fn assignment(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
         let expr = self.logic_or()?;
 
         if self.check(&[TokenType::Equal]) {
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
         return Ok(expr);
     }
 
-    fn logic_or(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn logic_or(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.logic_and()?;
 
         while self.check(&[TokenType::Keyword(Keyword::Or)]) {
@@ -375,7 +375,7 @@ impl<'a> Parser<'a> {
         return Ok(expr);
     }
 
-    fn logic_and(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn logic_and(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.equality()?;
 
         while self.check(&[TokenType::Keyword(Keyword::And)]) {
@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
     }
 
     // Lowest precedence, going up from here
-    fn equality(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn equality(&mut self) -> Result<Expr, ParseError> {
         // Create the left-hand side expression
         let mut expr = self.comparison()?;
 
@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
     }
 
     // A comparison is a term followed by zero or more <, >, <=, >=, each followed by a term, like 1 < 2 >= 3
-    fn comparison(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn comparison(&mut self) -> Result<Expr, ParseError> {
         // Create the left-hand side expression (can be a term or above)
         let mut expr = self.term()?;
 
@@ -432,7 +432,7 @@ impl<'a> Parser<'a> {
     }
 
     // A term is a factor followed by zero or more + or -, each followed by a factor, like 1 + 2 - 3
-    fn term(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn term(&mut self) -> Result<Expr, ParseError> {
         // Create the left-hand side expression (can be a factor or above)
         let mut expr = self.factor()?;
 
@@ -452,7 +452,7 @@ impl<'a> Parser<'a> {
     }
 
     // A factor is a unary expression followed by zero or more * or /, each followed by a unary expression, like -4 / 2 * 3
-    fn factor(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn factor(&mut self) -> Result<Expr, ParseError> {
         // Create the left-hand side expression (can be a unary or above)
         let mut expr = self.unary()?;
 
@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
     }
 
     // A unary expression is either a primary expression or a unary operator followed by another unary expression, like -!!5
-    fn unary(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn unary(&mut self) -> Result<Expr, ParseError> {
         if self.check(&[TokenType::Bang, TokenType::Minus]) {
             let operator = self.advance()?;
             let right = self.unary()?;
@@ -487,7 +487,7 @@ impl<'a> Parser<'a> {
     }
 
     // A primary expression is either a literal value or a parenthesized expression
-    fn primary(&mut self) -> Result<Expr<'a>, ParseError> {
+    fn primary(&mut self) -> Result<Expr, ParseError> {
         let current_token = self.advance()?;
 
         match current_token.token_type {
