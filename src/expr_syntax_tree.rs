@@ -34,4 +34,9 @@ pub enum Expr {
     Variable {
         name: Token,
     },
+    Call {
+        callee: Box<Expr>,
+        paren: Token,
+        arguments: Vec<Expr>,
+    },
 }

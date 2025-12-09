@@ -1,10 +1,11 @@
 use crate::token::Literal;
+use std::rc::Rc;
 use crate::token::Token;
 use crate::token::TokenType;
-use crate::expr_syntax_tree::Expr;
+use crate::expr_syntax_tree::{Expr};
 use crate::token::Keyword::{Nil, False, True};
 use crate::token::Keyword;
-use crate::statement_syntax_tree::Statement;
+use crate::statement_syntax_tree::{Statement, StatementRef};
 use crate::parse_error::ParseError;
 
 pub struct Parser {
@@ -93,8 +94,8 @@ impl Parser {
         let _ = self.advance();
     }
 
-    pub fn parse(&mut self) -> Vec<Statement> {
-        let mut statements: Vec<Statement> = Vec::new();
+    pub fn parse(&mut self) -> Vec<StatementRef> {
+        let mut statements: Vec<StatementRef> = Vec::new();
 
         // Parse statements until the end of the token stream (-1 for EOF)
         while self.current < self.tokens.len() - 1 {
@@ -103,7 +104,7 @@ impl Parser {
                 eprintln!("{}", e);
             }
             else if let Ok(statement) = statement {
-                statements.push(statement);
+                statements.push(Rc::new(statement));
             }
         }
         return statements;
@@ -113,6 +114,12 @@ impl Parser {
         // For now, only parse variable declarations and statements
         if self.check(&[TokenType::Keyword(Keyword::Var)]) {
             return self.var_declaration().or_else(|err: ParseError| {
+                self.synchronize(); // Synchronize on error
+                Err(err)
+            });
+        } else if self.check(&[TokenType::Keyword(Keyword::Fun)]) {
+            // Function declaration
+            return self.function_declaration("function").or_else(|err: ParseError| {
                 self.synchronize(); // Synchronize on error
                 Err(err)
             });
@@ -147,6 +154,50 @@ impl Parser {
         return Ok(Statement::Var {
             name: name_token,
             initializer,
+        });
+    }
+
+    fn function_declaration(&mut self, kind: &str) -> Result<Statement, ParseError> {
+        // Consume the 'fun' keyword
+        let _fun_token = self.advance();
+
+        // Consume the function name
+        let name_token = self.consume(TokenType::Identifier, &format!("Expect {} name.", kind))?;
+
+        // Consume the '(' token
+        self.consume(TokenType::LeftParen, &format!("Expect '(' after {} name.", kind))?;
+
+        // Parse the parameters
+        let mut params: Vec<Token> = Vec::new();
+        if !self.check(&[TokenType::RightParen]) {
+            loop {
+                // Consume the parameter name
+                let param_token = self.consume(TokenType::Identifier, "Expect parameter name.")?;
+                params.push(param_token);
+
+                if !self.check(&[TokenType::Comma]) {
+                    break;
+                }
+                // Consume the ',' token
+                let _comma_token = self.advance();
+            }
+        }
+
+        // Consume the ')' token
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+        // Consume the '{' token
+        self.consume(TokenType::LeftBrace, &format!("Expect '{{' before {} body.", kind))?;
+
+        // Parse the function body
+        let Statement::Block { statements: body } = self.block_statement()? else {
+            return Self::error(&name_token, "Expect function body.");
+        };
+
+        return Ok(Statement::Function {
+            name: name_token,
+            params,
+            body,
         });
     }
 
@@ -194,16 +245,18 @@ impl Parser {
     }
 
     fn block_statement(&mut self) -> Result<Statement, ParseError> {
-        // Consume the '{' token
-        let _left_brace = self.advance();
+        // Consume the '{' token if it's there
+        if self.check(&[TokenType::LeftBrace]) {
+            let _left_brace_token = self.advance()?;
+        }
 
         // Create a vector to hold the statements in the block
-        let mut statements: Vec<Statement> = Vec::new();
+        let mut statements: Vec<StatementRef> = Vec::new();
 
         // Parse statements until we find a '}'
         while !self.check(&[TokenType::RightBrace]) && self.current < self.tokens.len() - 1 {
             let declaration = self.declaration()?;
-            statements.push(declaration);
+            statements.push(Rc::new(declaration));
         }
 
         // Consume the '}' token
@@ -224,23 +277,23 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
 
         // Parse the then branch statement
-        let then_branch = Box::new(self.statement()?);
+        let then_branch = self.statement()?;
 
         // Optional else branch
-        let else_branch = if self.check(&[TokenType::Keyword(Keyword::Else)]) {
+        let else_branch: Option<StatementRef> = if self.check(&[TokenType::Keyword(Keyword::Else)]) {
             // Consume the 'else' keyword
             let _else_token = self.advance();
 
             // Parse the else branch statement
-            Some(Box::new(self.statement()?))
+            Some(Rc::new(self.statement()?))
         } else {
             None
         };
 
         return Ok(Statement::If {
             condition,
-            then_branch,
-            else_branch,
+            then_branch: Rc::new(then_branch),
+            else_branch: else_branch,
         });
     }
 
@@ -254,7 +307,7 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after while condition.")?;
 
         // Parse the body statement (the thing that gets repeated)
-        let body = Box::new(self.statement()?);
+        let body: StatementRef = Rc::new(self.statement()?);
 
         return Ok(Statement::While {
             condition,
@@ -312,23 +365,23 @@ impl Parser {
         if increment.is_some() {
             // Combine what's in the body with the increment expression
             body = Statement::Block {
-                statements: vec![body, Statement::Expression {
+                statements: vec![Rc::new(body), Rc::new(Statement::Expression {
                     expression: increment.unwrap()
-                }]
+                })]
             };
         }
 
         // Create a while statement with the condition specified and the body we made (with the increment)
         body = Statement::While {
             condition,
-            body: Box::new(body)
+            body: Rc::new(body)
         };
 
         // If there is an initializer, add it as a statement before the while loop
         if initializer.is_some() {
             body = Statement::Block {
-                statements: vec![initializer.unwrap(), body]
-            }
+                statements: vec![Rc::new(initializer.unwrap()), Rc::new(body)]
+            };
         }
 
         return Ok(body);
@@ -483,7 +536,49 @@ impl Parser {
             });
         }
 
-        return self.primary();
+        return self.call();
+    }
+
+    fn call(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.check(&[TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        return Ok(expr);
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+        // Consume the '(' token
+        self.advance()?;
+
+        // Scan the arguments
+        let mut arguments: Vec<Expr> = Vec::new();
+
+        if !self.check(&[TokenType::RightParen]) {
+            loop {
+                // Add one argument expression to the list of arguments
+                arguments.push(self.expression()?);
+                if !self.check(&[TokenType::Comma]) {
+                    // If there isn't a comma, there are no more arguments
+                    break;
+                }
+                self.advance()?; // consume the comma (yummy)
+            }
+        }
+
+        let paren = self.consume(TokenType::RightParen, "Expect ')' after arguments.")?;
+
+        return Ok(Expr::Call {
+            callee: Box::new(callee),
+            paren,
+            arguments
+        });
     }
 
     // A primary expression is either a literal value or a parenthesized expression

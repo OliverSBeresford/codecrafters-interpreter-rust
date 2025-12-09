@@ -13,6 +13,9 @@ mod statement_syntax_tree;
 mod parse_error;
 mod environment;
 mod value;
+mod callable;
+mod function;
+mod clock;
 
 use scanner::scan;
 use parse::Parser;

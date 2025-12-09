@@ -1,7 +1,10 @@
 use crate::expr_syntax_tree::{Expr};
+use std::rc::Rc;
 use crate::token::Token;
 use std::fmt;
 use crate::ast_printer::AstPrinter;
+
+pub type StatementRef = Rc<Statement>;
 
 pub enum Statement {
     Expression {
@@ -9,8 +12,8 @@ pub enum Statement {
     },
     If {
         condition: Expr,
-        then_branch: Box<Statement>,
-        else_branch: Option<Box<Statement>>,
+        then_branch: StatementRef,
+        else_branch: Option<StatementRef>,
     },
     Print {
         expression: Expr,
@@ -21,10 +24,15 @@ pub enum Statement {
     },
     While {
         condition: Expr,
-        body: Box<Statement>,
+        body: StatementRef,
     },
     Block {
-        statements: Vec<Statement>,
+        statements: Vec<StatementRef>,
+    },
+    Function {
+        name: Token,
+        params: Vec<Token>,
+        body: Vec<StatementRef>,
     },
 }
 
@@ -66,6 +74,15 @@ impl fmt::Debug for Statement {
             Statement::While { condition, body } => {
                 write!(f, "WhileStatement(\n\tcondition: {},\n\tbody: {:?}\n)", 
                     ast_printer.visit(condition), body)
+            }
+            Statement::Function { name, params, body } => {
+                let param_names: Vec<String> = params.iter().map(|param| param.lexeme.clone()).collect();
+                let mut result = format!("FunctionStatement(name: {}, params: {:?}, body:\n", name.lexeme, param_names);
+                for statement in body {
+                    result.push_str(&format!("\t{}\n", format!("{:?}", statement).replace("\n", "\n\t")));
+                }
+                result.push(')');
+                write!(f, "{}", result)
             }
         }
     }

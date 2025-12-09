@@ -1,10 +1,13 @@
 use crate::expr_syntax_tree::{Expr};
-use crate::statement_syntax_tree::Statement;
+use crate::statement_syntax_tree::{Statement, StatementRef};
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
 use crate::environment::{EnvRef, Environment};
+use crate::function::Function;
 use std::fmt;
 use crate::value::Value;
+use crate::clock::Clock;
+use std::rc::Rc;
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -18,20 +21,28 @@ impl fmt::Display for Value {
             Value::Str(s) => s.clone(),
             Value::Bool(b) => format!("{}", b),
             Value::Nil => "nil".to_string(),
+            Value::Callable(func) => format!("<fn {}>", func.name()),
         };
         write!(f, "{}", out)
     }
 }
 
 pub struct Interpreter {
+    pub globals: EnvRef,
     environment: EnvRef,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter {
-            environment: Environment::new(None),
-        }
+        let globals = Environment::new(None);
+        let interpreter = Interpreter {
+            globals: globals.clone(),
+            environment: globals.clone(),
+        };
+        // Define native functions in the global environment
+        globals.borrow_mut().define("clock".to_string(), Value::Callable(Rc::new(Clock)));
+
+        interpreter
     }
 
     fn is_truthy(v: &Value) -> bool {
@@ -73,6 +84,7 @@ impl Interpreter {
             Expr::Assign { name, value } => self.assign_variable(name, value),
             Expr::LogicOr { left, right } => self.logic_or(left, right),
             Expr::LogicAnd { left, right } => self.logic_and(left, right),
+            Expr::Call { callee, paren, arguments } => self.call_expr(callee, paren, arguments),
         }
     }
 
@@ -86,14 +98,14 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_block(&mut self, statements: &Vec<Statement>) -> Result<Value, RuntimeError> {
+    pub fn execute_block(&mut self, statements: &Vec<StatementRef>, environment: EnvRef) -> Result<Value, RuntimeError> {
         // Create a new environment enclosed by the current one
         let previous_environment = self.environment.clone();
-        self.environment = Environment::new(Some(previous_environment.clone()));
+        self.environment = environment;
 
         // Execute each statement in the block
         for statement in statements {
-            self.execute(statement)?;
+            self.execute(&statement)?;
         }
 
         // Restore the previous environment
@@ -102,7 +114,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &Box<Statement>, else_branch: &Option<Box<Statement>>) -> Result<Value, RuntimeError> {
+    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &StatementRef, else_branch: &Option<StatementRef>) -> Result<Value, RuntimeError> {
         let condition_value = self.evaluate(condition)?;
 
         // Execute the then_branch if the condition is truthy, otherwise execute the else_branch if it exists
@@ -128,7 +140,7 @@ impl Interpreter {
         return Ok(Value::Nil);
     }
 
-    fn execute_while_statement(&mut self, condition: &Expr, body: &Box<Statement>) -> Result<Value, RuntimeError> {
+    fn execute_while_statement(&mut self, condition: &Expr, body: &StatementRef) -> Result<Value, RuntimeError> {
         // Evaluate the condition and execute the body while the condition is truthy
         while Self::is_truthy(&self.evaluate(condition)?) {
             self.execute(body)?;
@@ -138,18 +150,31 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute(&mut self, statement: &Statement) -> Result<Value, RuntimeError> {
-        match statement {
+    // Declare and define a function
+    fn execute_function_statement(&mut self, statement: &StatementRef) -> Result<Value, RuntimeError> {
+        // Create a Function from the statement
+        let function: Function = Function::from_statement(statement.clone())?;
+
+        // Define the function in the current environment
+        self.environment.borrow_mut().define(function.name.clone(), Value::Callable(Rc::new(function)));
+
+        Ok(Value::Nil)
+    }
+
+    fn execute(&mut self, statement: &StatementRef) -> Result<Value, RuntimeError> {
+        match statement.as_ref() {
             Statement::Expression { expression } => self.execute_expression(&expression),
             Statement::Print { expression } => self.execute_print(&expression),
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
-            Statement::Block { statements } => self.execute_block(statements),
+            // Execute a block statement in a new enclosed environment
+            Statement::Block { statements } => self.execute_block(statements, Environment::new(Some(self.environment.clone()))),
             Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch),
             Statement::While { condition, body } => self.execute_while_statement(condition, body),
+            Statement::Function { name: _, params: _, body: _ } => self.execute_function_statement(statement), // Declare function
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Statement>) {
+    pub fn interpret(&mut self, statements: Vec<StatementRef>) {
         for statement in statements {
             if let Err(runtime_error) = self.execute(&statement) {
                 eprintln!("{}", runtime_error);
@@ -317,6 +342,28 @@ impl Interpreter {
         else {
             self.evaluate(right)
         }
+    }
+
+    fn call_expr(&mut self, callee: &Expr, paren: &Token, arguments: &Vec<Expr>) -> Result<Value, RuntimeError> {
+        // Evaluate the callee expression to get the function to call (usually an identifier)
+        let Value::Callable(function) = self.evaluate(callee)? else { // Not a callable
+            return Self::error(paren, "Can only call functions and classes.");
+        };
+
+        // Evaluate each argument expression
+        let mut arg_values = Vec::new();
+        for arg_expr in arguments {
+            let arg_value = self.evaluate(arg_expr)?;
+            arg_values.push(arg_value);
+        }
+
+        // Check arity
+        if arg_values.len() != function.arity() {
+            return Self::error(paren, &format!("Expected {} arguments but got {}.", function.arity(), arg_values.len()));
+        }
+
+        // Call the function
+        Ok(function.call(self, arg_values))
     }
 }
 
