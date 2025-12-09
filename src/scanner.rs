@@ -244,9 +244,6 @@ impl<'a> Scanner<'a> {
 
     // Method to scan string literals
     fn scan_string(&mut self) {
-        // Consume the opening quote
-        self.advance();
-
         while let Some(c) = self.advance() {
             if c == '"' {
                 // Consume the closing quote
@@ -257,7 +254,7 @@ impl<'a> Scanner<'a> {
         }
 
         // If we reach the end of the input without finding a closing quote, it's an error
-        eprintln!("[line {}] Error: Unterminated string.", self.line);
+        eprintln!("[line {}] Scanning Error: Unterminated string.", self.line);
         self.lexical_error = true;
     }
 
