@@ -1,4 +1,6 @@
 use crate::token::Token;
+use crate::statement_syntax_tree::Statement;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -38,5 +40,9 @@ pub enum Expr {
         callee: Box<Expr>,
         paren: Token,
         arguments: Vec<Expr>,
+    },
+    Lambda {
+        params: Vec<Token>,
+        body: Vec<Rc<Statement>>,
     },
 }

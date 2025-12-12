@@ -1,5 +1,6 @@
 use crate::expr_syntax_tree::{Expr};
 use crate::token::Token;
+use crate::statement_syntax_tree::StatementRef;
 
 type Output = String;
 
@@ -26,6 +27,7 @@ impl AstPrinter {
             Expr::LogicOr { left, right } => self.visit_logic_or(left, right, level),
             Expr::LogicAnd { left, right } => self.visit_logic_and(left, right, level),
             Expr::Call { callee, arguments , ..} => self.visit_call(callee, arguments, level),
+            Expr::Lambda { params, body } => self.visit_lambda(params, body, level),
         }
     }
 
@@ -95,6 +97,23 @@ impl AstPrinter {
         for argument in arguments {
             s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(argument, level + 1)));
         }
+        s.push_str(&format!("{} )", self.indent(level)));
+        s
+    }
+
+    fn visit_lambda(&self, params: &Vec<Token>, body: &Vec<StatementRef>, level: usize) -> Output {
+        let mut s = String::new();
+        s.push_str("(lambda\n");
+        s.push_str(&format!("{}(params", self.indent(level + 1)));
+        for param in params {
+            s.push_str(&format!(" {}", param.lexeme));
+        }
+        s.push_str(")\n");
+        s.push_str(&format!("{}(body\n", self.indent(level + 1)));
+        for statement in body {
+            s.push_str(&format!("{}{}\n", self.indent(level + 2), format!("{:?}", statement))); // Placeholder for statement printing
+        }
+        s.push_str(&format!("{} )\n", self.indent(level + 1)));
         s.push_str(&format!("{} )", self.indent(level)));
         s
     }

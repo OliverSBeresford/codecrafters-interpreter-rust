@@ -88,6 +88,7 @@ impl Interpreter {
             Expr::LogicOr { left, right } => self.logic_or(left, right),
             Expr::LogicAnd { left, right } => self.logic_and(left, right),
             Expr::Call { callee, paren, arguments } => self.call_expr(callee, paren, arguments),
+            Expr::Lambda { params, body } => self.lambda_expression(params, body),
         }
     }
 
@@ -380,6 +381,19 @@ impl Interpreter {
 
         // Call the function
         Ok(function.call(self, arg_values)?)
+    }
+
+    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Vec<StatementRef>) -> InterpreterResult<Value> {
+        // Create a Function representing the lambda
+        let lambda_function = Function {
+            name: "<lambda>".to_string(),
+            params: params.iter().map(|param| param.lexeme.clone()).collect(),
+            body: body.clone(),
+            closure: self.environment.clone(),
+        };
+
+        // Return the lambda as a callable Value
+        Ok(Value::Callable(Rc::new(lambda_function)))
     }
 }
 

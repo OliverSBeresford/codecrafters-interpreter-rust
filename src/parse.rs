@@ -625,6 +625,7 @@ impl Parser {
                     value: current_token
                 });
             }
+            TokenType::Keyword(Keyword::Fun) => self.lambda_expression(),
             TokenType::Identifier => {
                 return Ok(Expr::Variable{
                     name: current_token
@@ -634,5 +635,42 @@ impl Parser {
                 return Self::error(&current_token, "Expect expression.");
             }
         }
+    }
+
+    fn lambda_expression(&mut self) -> Result<Expr, ParseError> {
+        // Parse the parameters
+        self.consume(TokenType::LeftParen, "Expect '(' after 'fun'.")?;
+
+        // Parse the parameters to the lambda
+        let mut params: Vec<Token> = Vec::new();
+        if !self.check(&[TokenType::RightParen]) {
+            loop {
+                // Consume the parameter name
+                let param_token = self.consume(TokenType::Identifier, "Expect parameter name.")?;
+                params.push(param_token);
+
+                if !self.check(&[TokenType::Comma]) {
+                    break;
+                }
+                // Consume the ',' token
+                let _comma_token = self.advance()?;
+            }
+        }
+
+        // Consume the ')' token
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+        // Consume the '{' token
+        self.consume(TokenType::LeftBrace, "Expect '{' before lambda body.")?;
+
+        // Parse the function body
+        let Statement::Block { statements: body } = self.block_statement()? else {
+            return Self::error(&params[0], "Expect lambda body.");
+        };
+
+        return Ok(Expr::Lambda {
+            params,
+            body,
+        });
     }
 }
