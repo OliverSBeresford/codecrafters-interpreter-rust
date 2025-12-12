@@ -213,6 +213,8 @@ impl Parser {
             return self.while_statement();
         } else if self.check(&[TokenType::Keyword(Keyword::For)]) {
             return self.for_statement();
+        } else if self.check(&[TokenType::Keyword(Keyword::Return)]) {
+            return self.return_statement();
         } else {
             return self.expression_statement();
         }
@@ -385,6 +387,26 @@ impl Parser {
         }
 
         return Ok(body);
+    }
+
+    fn return_statement(&mut self) -> Result<Statement, ParseError> {
+        // Consume the 'return' keyword
+        let keyword = self.advance()?;
+
+        // Optional return value
+        let value = if !self.check(&[TokenType::Semicolon]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        // Consume the semicolon at the end of the return statement
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.")?;
+
+        return Ok(Statement::Return {
+            keyword,
+            value,
+        });
     }
 
     pub fn expression(&mut self) -> Result<Expr, ParseError> {

@@ -2,12 +2,15 @@ use crate::expr_syntax_tree::{Expr};
 use crate::statement_syntax_tree::{Statement, StatementRef};
 use crate::token::{Literal, Token, TokenType};
 use crate::runtime_error::RuntimeError;
+use crate::control_flow::ControlFlow;
 use crate::environment::{EnvRef, Environment};
 use crate::function::Function;
 use std::fmt;
 use crate::value::Value;
 use crate::clock::Clock;
 use std::rc::Rc;
+
+pub type InterpreterResult<T> = Result<T, ControlFlow>;
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -29,7 +32,7 @@ impl fmt::Display for Value {
 
 pub struct Interpreter {
     pub globals: EnvRef,
-    environment: EnvRef,
+    pub environment: EnvRef,
 }
 
 impl Interpreter {
@@ -54,15 +57,15 @@ impl Interpreter {
     }
 
     // Report an evaluation error
-    fn error<T>(token: &Token, message: &str) -> Result<T, RuntimeError> {
+    fn error<T>(token: &Token, message: &str) -> InterpreterResult<T> {
         if token.token_type == TokenType::Eof {
-            return Err(RuntimeError::new(token.line, format!("Error at end: {}", message)));
+            return Err(ControlFlow::RuntimeError(RuntimeError::new(token.line, format!("Error at end: {}", message))));
         } else {
-            return Err(RuntimeError::new(token.line, format!("Error at '{}': {}", token.lexeme, message)));
+            return Err(ControlFlow::RuntimeError(RuntimeError::new(token.line, format!("Error at '{}': {}", token.lexeme, message))));
         }
     }
 
-    fn as_number(operator: &Token, v: &Value) -> Result<f64, RuntimeError> {
+    fn as_number(operator: &Token, v: &Value) -> InterpreterResult<f64> {
         match v {
             Value::Float(n) => Ok(*n),
             Value::Integer(i) => Ok(*i as f64),
@@ -70,7 +73,7 @@ impl Interpreter {
         }
     }
 
-    pub fn evaluate(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+    pub fn evaluate(&mut self, expression: &Expr) -> InterpreterResult<Value> {
         match expression {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
             Expr::Literal { value } => self.visit_literal(value),
@@ -88,17 +91,17 @@ impl Interpreter {
         }
     }
 
-    fn execute_expression(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+    fn execute_expression(&mut self, expression: &Expr) -> InterpreterResult<Value> {
         self.evaluate(expression)
     }
 
-    fn execute_print(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+    fn execute_print(&mut self, expression: &Expr) -> InterpreterResult<Value> {
         let value = self.evaluate(expression)?;
         println!("{}", value);
         Ok(Value::Nil)
     }
 
-    pub fn execute_block(&mut self, statements: &Vec<StatementRef>, environment: EnvRef) -> Result<Value, RuntimeError> {
+    pub fn execute_block(&mut self, statements: &Vec<StatementRef>, environment: EnvRef) -> InterpreterResult<Value> {
         // Create a new environment enclosed by the current one
         let previous_environment = self.environment.clone();
         self.environment = environment;
@@ -114,7 +117,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &StatementRef, else_branch: &Option<StatementRef>) -> Result<Value, RuntimeError> {
+    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &StatementRef, else_branch: &Option<StatementRef>) -> InterpreterResult<Value> {
         let condition_value = self.evaluate(condition)?;
 
         // Execute the then_branch if the condition is truthy, otherwise execute the else_branch if it exists
@@ -127,7 +130,7 @@ impl Interpreter {
         }
     }
 
-    fn execute_var_statement(&mut self, name: &Token, initializer: &Option<Expr>) -> Result<Value, RuntimeError> {
+    fn execute_var_statement(&mut self, name: &Token, initializer: &Option<Expr>) -> InterpreterResult<Value> {
         // Evaluate the initializer expression if it exists, otherwise use nil
         let mut value: Value = Value::Nil;
         if let Some(init_expr) = initializer {
@@ -140,7 +143,7 @@ impl Interpreter {
         return Ok(Value::Nil);
     }
 
-    fn execute_while_statement(&mut self, condition: &Expr, body: &StatementRef) -> Result<Value, RuntimeError> {
+    fn execute_while_statement(&mut self, condition: &Expr, body: &StatementRef) -> InterpreterResult<Value> {
         // Evaluate the condition and execute the body while the condition is truthy
         while Self::is_truthy(&self.evaluate(condition)?) {
             self.execute(body)?;
@@ -151,7 +154,7 @@ impl Interpreter {
     }
 
     // Declare and define a function
-    fn execute_function_statement(&mut self, statement: &StatementRef) -> Result<Value, RuntimeError> {
+    fn execute_function_statement(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
         // Create a Function from the statement
         let function: Function = Function::from_statement(statement.clone())?;
 
@@ -161,7 +164,19 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute(&mut self, statement: &StatementRef) -> Result<Value, RuntimeError> {
+    fn execute_return_statement(&mut self, _keyword: &Token, value: &Option<Expr>) -> InterpreterResult<Value> {
+        // Evaluate the return value expression if it exists, otherwise use nil
+        let return_value = if let Some(value_expr) = value {
+            self.evaluate(value_expr)?
+        } else {
+            Value::Nil
+        };
+
+        // Use ControlFlow to signal a return
+        Err(ControlFlow::Return(return_value))
+    }
+
+    fn execute(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
         match statement.as_ref() {
             Statement::Expression { expression } => self.execute_expression(&expression),
             Statement::Print { expression } => self.execute_print(&expression),
@@ -171,19 +186,20 @@ impl Interpreter {
             Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch),
             Statement::While { condition, body } => self.execute_while_statement(condition, body),
             Statement::Function { name: _, params: _, body: _ } => self.execute_function_statement(statement), // Declare function
+            Statement::Return { keyword, value } => self.execute_return_statement(keyword, value),
         }
     }
 
     pub fn interpret(&mut self, statements: Vec<StatementRef>) {
         for statement in statements {
-            if let Err(runtime_error) = self.execute(&statement) {
+            if let Err(ControlFlow::RuntimeError(runtime_error)) = self.execute(&statement) {
                 eprintln!("{}", runtime_error);
                 std::process::exit(70);
             }
         }
     }
 
-    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Result<Value, RuntimeError> {
+    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> InterpreterResult<Value> {
         let left_value = self.evaluate(left)?;
         let right_value = self.evaluate(right)?;
         let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_)) ||
@@ -261,7 +277,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_literal(&mut self, value: &Token) -> Result<Value, RuntimeError> {
+    fn visit_literal(&mut self, value: &Token) -> InterpreterResult<Value> {
         // Convert the token's literal to a Value
         let v = match value.literal.as_ref() {
             Some(Literal::Number(n)) => {
@@ -281,11 +297,11 @@ impl Interpreter {
     }
 
     // Evaluate the inner expression
-    fn visit_grouping(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
+    fn visit_grouping(&mut self, expression: &Expr) -> InterpreterResult<Value> {
         self.evaluate(expression)
     }
 
-    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> Result<Value, RuntimeError> {
+    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> InterpreterResult<Value> {
         // Evaluate the right-hand side expression
         let right_value = self.evaluate(right)?;
 
@@ -307,7 +323,7 @@ impl Interpreter {
         }
     }
 
-    fn assign_variable(&mut self, name: &Token, value_expr: &Expr) -> Result<Value, RuntimeError> {
+    fn assign_variable(&mut self, name: &Token, value_expr: &Expr) -> InterpreterResult<Value> {
         // Evaluate the value expression
         let evaluated_value = self.evaluate(value_expr)?;
         // Assign the value to the variable in the environment
@@ -316,7 +332,7 @@ impl Interpreter {
         Ok(evaluated_value)
     }
 
-    fn logic_or(&mut self, left: &Expr, right: &Expr) -> Result<Value, RuntimeError> {
+    fn logic_or(&mut self, left: &Expr, right: &Expr) -> InterpreterResult<Value> {
         // Evaluate the left expression
         let left_value = self.evaluate(left)?;
 
@@ -330,7 +346,7 @@ impl Interpreter {
         }
     }
 
-    fn logic_and(&mut self, left: &Expr, right: &Expr) -> Result<Value, RuntimeError> {
+    fn logic_and(&mut self, left: &Expr, right: &Expr) -> InterpreterResult<Value> {
         // Evaluate the left expression
         let left_value = self.evaluate(left)?;
 
@@ -344,7 +360,7 @@ impl Interpreter {
         }
     }
 
-    fn call_expr(&mut self, callee: &Expr, paren: &Token, arguments: &Vec<Expr>) -> Result<Value, RuntimeError> {
+    fn call_expr(&mut self, callee: &Expr, paren: &Token, arguments: &Vec<Expr>) -> InterpreterResult<Value> {
         // Evaluate the callee expression to get the function to call (usually an identifier)
         let Value::Callable(function) = self.evaluate(callee)? else { // Not a callable
             return Self::error(paren, "Can only call functions and classes.");
@@ -363,7 +379,7 @@ impl Interpreter {
         }
 
         // Call the function
-        Ok(function.call(self, arg_values))
+        Ok(function.call(self, arg_values)?)
     }
 }
 

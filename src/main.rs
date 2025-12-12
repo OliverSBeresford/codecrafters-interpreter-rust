@@ -16,9 +16,11 @@ mod value;
 mod callable;
 mod function;
 mod clock;
+mod control_flow;
 
 use scanner::scan;
 use parse::Parser;
+use control_flow::ControlFlow;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -82,8 +84,11 @@ fn main() {
 
             // Create an interpreter and evaluate the expression
             let mut interpreter = interpreter::Interpreter::new();
-            let result = interpreter.evaluate(&expression).unwrap_or_else(|runtime_error| {
-                eprintln!("{}", runtime_error);
+            let result = interpreter.evaluate(&expression).unwrap_or_else(|control_flow| {
+                if let ControlFlow::RuntimeError(runtime_error) = control_flow {
+                    eprintln!("{}", runtime_error);
+                    std::process::exit(70);
+                }
                 std::process::exit(70);
             });
             
@@ -103,9 +108,6 @@ fn main() {
             interpreter.interpret(statements);
         }
         "dbg" => {
-            // Create an AST printer
-            let ast_printer = ast_printer::AstPrinter;
-
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
             println!("Tokens:\n{}\n", tokens);
@@ -115,8 +117,7 @@ fn main() {
             let statements = parser.parse();
 
             // Print the AST of the statements
-            println!("AST of the statements:");
-            ast_printer.print_statements(&statements);
+            dbg!("Parsed Statements AST:", &statements);
         }
         _ => {
             writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
