@@ -43,7 +43,7 @@ impl Interpreter {
             environment: globals.clone(),
         };
         // Define native functions in the global environment
-        globals.borrow_mut().define("clock".to_string(), Value::Callable(Rc::new(Clock)));
+        interpreter.globals.borrow_mut().define("clock".to_string(), Value::Callable(Rc::new(Clock)));
 
         interpreter
     }
@@ -156,7 +156,7 @@ impl Interpreter {
     // Declare and define a function
     fn execute_function_statement(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
         // Create a Function from the statement
-        let function: Function = Function::from_statement(statement.clone())?;
+        let function: Function = Function::from_statement(statement.clone(), self.environment.clone())?;
 
         // Define the function in the current environment
         self.environment.borrow_mut().define(function.name.clone(), Value::Callable(Rc::new(function)));

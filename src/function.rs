@@ -13,16 +13,18 @@ pub struct Function {
     pub name: String,
     pub params: Vec<String>,
     pub body: Vec<StatementRef>,
+    pub closure: EnvRef,
 }
 
 impl Function {
     // Create a Function from a Statement::Function
-    pub fn from_statement(stmt: StatementRef) -> FunctionResult<Self> {
+    pub fn from_statement(stmt: StatementRef, closure: EnvRef) -> FunctionResult<Self> {
         if let Statement::Function { name, params, body } = &*stmt {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
                 body: body.clone(),
+                closure,
             })
         } else {
             // This should not happen if used correctly (even if the user makes a mistake)
@@ -39,7 +41,7 @@ impl Callable for Function {
     fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> FunctionResult<Value> {
         let previous_environment = interpreter.environment.clone();
 
-        let environment: EnvRef = Environment::new(Some(interpreter.globals.clone()));
+        let environment: EnvRef = Environment::new(Some(self.closure.clone()));
 
         // Loop through params and args simultaneously (using zip) and define them in the new environment
         for (param, arg) in self.params.iter().zip(args.into_iter()) {
