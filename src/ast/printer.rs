@@ -1,6 +1,5 @@
-use crate::ast::expr::Expr;
-use crate::ast::statement::StatementRef;
-use crate::lexer::token::Token;
+use crate::{Expr};
+use crate::Token;
 
 type Output = String;
 
@@ -9,112 +8,70 @@ pub struct AstPrinter;
 
 impl AstPrinter {
     pub fn print(&self, expr: &Expr) {
-        println!("{}", self.visit_with_indent(expr, 0));
+        println!("{}", self.visit(expr));
     }
 
-    fn indent(&self, level: usize) -> String {
-        "    ".repeat(level)
-    }
-
-    fn visit_with_indent(&self, expr: &Expr, level: usize) -> Output {
+    pub fn visit(&self, expr: &Expr) -> Output {
         match expr {
-            Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right, level),
+            Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
             Expr::Literal { value } => self.visit_literal(value),
-            Expr::Grouping { expression } => self.visit_grouping(expression, level),
-            Expr::Unary { operator, right } => self.visit_unary(operator, right, level),
+            Expr::Grouping { expression } => self.visit_grouping(expression),
+            Expr::Unary { operator, right } => self.visit_unary(operator, right),
             Expr::Variable { name } => self.visit_variable(name),
-            Expr::Assign { name, value } => self.visit_assign(name, value, level),
-            Expr::LogicOr { left, right } => self.visit_logic_or(left, right, level),
-            Expr::LogicAnd { left, right } => self.visit_logic_and(left, right, level),
-            Expr::Call { callee, arguments , ..} => self.visit_call(callee, arguments, level),
-            Expr::Lambda { params, body } => self.visit_lambda(params, body, level),
+            Expr::Assign { name, value } => self.visit_assign(name, value),
+            Expr::LogicOr { left, right } => self.visit_logic_or(left, right),
+            Expr::LogicAnd { left, right } => self.visit_logic_and(left, right),
+            Expr::Call { callee, arguments , ..} => self.visit_call(callee, arguments),
+            Expr::Lambda { params, .. } => self.visit_lambda(params),
+
         }
     }
 
-    fn visit_binary(&self, left: &Expr, operator: &Token, right: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str(&format!("({}\n", operator.lexeme));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(left, level + 1)));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(right, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_binary(&self, left: &Expr, operator: &Token, right: &Expr) -> Output {
+        format!("({} {} {})", operator.lexeme, self.visit(left), self.visit(right))
     }
 
     fn visit_literal(&self, value: &Token) -> Output {
         format!("{}", value.literal.as_ref().unwrap())
     }
 
-    fn visit_grouping(&self, expression: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str("(group\n");
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(expression, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_grouping(&self, expression: &Expr) -> Output {
+        format!("(group {})", self.visit(expression))
     }
 
-    fn visit_unary(&self, operator: &Token, right: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str(&format!("({}\n", operator.lexeme));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(right, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_unary(&self, operator: &Token, right: &Expr) -> Output {
+        format!("({} {})", operator.lexeme, self.visit(right))
     }
 
     fn visit_variable(&self, name: &Token) -> Output {
         format!("(var {})", name.lexeme)
     }
 
-    fn visit_assign(&self, name: &Token, value: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str(&format!("(assign {}\n", name.lexeme));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(value, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_assign(&self, name: &Token, value: &Expr) -> Output {
+        format!("(assign {} {})", name.lexeme, self.visit(value))
     }
 
-    fn visit_logic_or(&self, left: &Expr, right: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str("(or\n");
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(left, level + 1)));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(right, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_logic_or(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(or {} {})", self.visit(left), self.visit(right))
     }
 
-    fn visit_logic_and(&self, left: &Expr, right: &Expr, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str("(and\n");
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(left, level + 1)));
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(right, level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_logic_and(&self, left: &Expr, right: &Expr) -> Output {
+        format!("(and {} {})", self.visit(left), self.visit(right))
     }
 
-    fn visit_call(&self, callee: &Expr, arguments: &Vec<Expr>, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str("(call\n");
-        s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(callee, level + 1)));
+    fn visit_call(&self, callee: &Expr, arguments: &Vec<Expr>) -> Output {
+        let mut result = format!("(call {}", self.visit(callee));
         for argument in arguments {
-            s.push_str(&format!("{}{}\n", self.indent(level + 1), self.visit_with_indent(argument, level + 1)));
+            result.push_str(&format!(" {}", self.visit(argument)));
         }
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+        result.push(')');
+        result
     }
 
-    fn visit_lambda(&self, params: &Vec<Token>, body: &Vec<StatementRef>, level: usize) -> Output {
-        let mut s = String::new();
-        s.push_str("(lambda\n");
-        s.push_str(&format!("{}(params", self.indent(level + 1)));
-        for param in params {
-            s.push_str(&format!(" {}", param.lexeme));
-        }
-        s.push_str(")\n");
-        s.push_str(&format!("{}(body\n", self.indent(level + 1)));
-        for statement in body {
-            s.push_str(&format!("{}{}\n", self.indent(level + 2), format!("{:?}", statement))); // Placeholder for statement printing
-        }
-        s.push_str(&format!("{} )\n", self.indent(level + 1)));
-        s.push_str(&format!("{} )", self.indent(level)));
-        s
+    fn visit_lambda(&self, params: &Vec<Token>) -> Output {
+        let param_list: Vec<String> = params.iter().map(|p| p.lexeme.clone()).collect();
+        let mut result = format!("(lambda with ({})", param_list.join(" "));
+        result.push(')');
+        result
     }
 }
