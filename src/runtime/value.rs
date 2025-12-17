@@ -1,5 +1,6 @@
-use crate::callable::Callable;
 use std::rc::Rc;
+
+use crate::runtime::callable::Callable;
 
 // Define a Value enum to represent evaluated values, can be anything because Lox is dynamically typed
 #[derive(Debug, Clone)]

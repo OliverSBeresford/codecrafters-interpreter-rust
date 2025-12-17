@@ -1,10 +1,10 @@
-use crate::callable::Callable;
-use crate::control_flow::ControlFlow;
-use crate::runtime_error::RuntimeError;
-use crate::value::Value;
-use crate::interpreter::Interpreter;
-use crate::statement_syntax_tree::{Statement, StatementRef};
-use crate::environment::{Environment, EnvRef};
+use crate::ast::statement::{Statement, StatementRef};
+use crate::runtime::callable::Callable;
+use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::environment::{EnvRef, Environment};
+use crate::runtime::interpreter::Interpreter;
+use crate::runtime::RuntimeError;
+use crate::runtime::value::Value;
 
 pub type FunctionResult<T> = Result<T, ControlFlow>;
 
@@ -28,7 +28,10 @@ impl Function {
             })
         } else {
             // This should not happen if used correctly (even if the user makes a mistake)
-            Err(ControlFlow::RuntimeError(RuntimeError::new(0, "Expected a function statement.".to_string())))
+            Err(ControlFlow::RuntimeError(RuntimeError::new(
+                0,
+                "Expected a function statement.".to_string(),
+            )))
         }
     }
 }

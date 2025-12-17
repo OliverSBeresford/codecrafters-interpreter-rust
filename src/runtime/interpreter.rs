@@ -1,14 +1,14 @@
-use crate::expr_syntax_tree::{Expr};
-use crate::statement_syntax_tree::{Statement, StatementRef};
-use crate::token::{Literal, Token, TokenType};
-use crate::runtime_error::RuntimeError;
-use crate::control_flow::ControlFlow;
-use crate::environment::{EnvRef, Environment};
-use crate::function::Function;
 use std::fmt;
-use crate::value::Value;
-use crate::clock::Clock;
 use std::rc::Rc;
+
+use crate::ast::{Expr, Statement, StatementRef};
+use crate::lexer::token::{Literal, Token, TokenType};
+use crate::runtime::clock::Clock;
+use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::environment::{EnvRef, Environment};
+use crate::runtime::function::Function;
+use crate::runtime::runtime_error::RuntimeError;
+use crate::runtime::value::Value;
 
 pub type InterpreterResult<T> = Result<T, ControlFlow>;
 
@@ -43,7 +43,10 @@ impl Interpreter {
             environment: globals.clone(),
         };
         // Define native functions in the global environment
-        interpreter.globals.borrow_mut().define("clock".to_string(), Value::Callable(Rc::new(Clock)));
+        interpreter
+            .globals
+            .borrow_mut()
+            .define("clock".to_string(), Value::Callable(Rc::new(Clock)));
 
         interpreter
     }
@@ -59,9 +62,15 @@ impl Interpreter {
     // Report an evaluation error
     fn error<T>(token: &Token, message: &str) -> InterpreterResult<T> {
         if token.token_type == TokenType::Eof {
-            return Err(ControlFlow::RuntimeError(RuntimeError::new(token.line, format!("Error at end: {}", message))));
+            Err(ControlFlow::RuntimeError(RuntimeError::new(
+                token.line,
+                format!("Error at end: {}", message),
+            )))
         } else {
-            return Err(ControlFlow::RuntimeError(RuntimeError::new(token.line, format!("Error at '{}': {}", token.lexeme, message))));
+            Err(ControlFlow::RuntimeError(RuntimeError::new(
+                token.line,
+                format!("Error at '{}': {}", token.lexeme, message),
+            )))
         }
     }
 
@@ -109,7 +118,7 @@ impl Interpreter {
 
         // Execute each statement in the block
         for statement in statements {
-            self.execute(&statement)?;
+            self.execute(statement)?;
         }
 
         // Restore the previous environment
@@ -140,8 +149,10 @@ impl Interpreter {
         }
 
         // Define the variable in the current environment
-        self.environment.borrow_mut().define(name.lexeme.to_string(), value.clone());
-        return Ok(Value::Nil);
+        self.environment
+            .borrow_mut()
+            .define(name.lexeme.to_string(), value.clone());
+        Ok(Value::Nil)
     }
 
     fn execute_while_statement(&mut self, condition: &Expr, body: &StatementRef) -> InterpreterResult<Value> {
@@ -160,7 +171,9 @@ impl Interpreter {
         let function: Function = Function::from_statement(statement.clone(), self.environment.clone())?;
 
         // Define the function in the current environment
-        self.environment.borrow_mut().define(function.name.clone(), Value::Callable(Rc::new(function)));
+        self.environment
+            .borrow_mut()
+            .define(function.name.clone(), Value::Callable(Rc::new(function)));
 
         Ok(Value::Nil)
     }
@@ -179,12 +192,16 @@ impl Interpreter {
 
     fn execute(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
         match statement.as_ref() {
-            Statement::Expression { expression } => self.execute_expression(&expression),
-            Statement::Print { expression } => self.execute_print(&expression),
+            Statement::Expression { expression } => self.execute_expression(expression),
+            Statement::Print { expression } => self.execute_print(expression),
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
             // Execute a block statement in a new enclosed environment
-            Statement::Block { statements } => self.execute_block(statements, Environment::new(Some(self.environment.clone()))),
-            Statement::If { condition, then_branch, else_branch } => self.execute_if_statement(condition, then_branch, else_branch),
+            Statement::Block { statements } => {
+                self.execute_block(statements, Environment::new(Some(self.environment.clone())))
+            }
+            Statement::If { condition, then_branch, else_branch } => {
+                self.execute_if_statement(condition, then_branch, else_branch)
+            }
             Statement::While { condition, body } => self.execute_while_statement(condition, body),
             Statement::Function { name: _, params: _, body: _ } => self.execute_function_statement(statement), // Declare function
             Statement::Return { keyword, value } => self.execute_return_statement(keyword, value),
@@ -203,10 +220,11 @@ impl Interpreter {
     fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> InterpreterResult<Value> {
         let left_value = self.evaluate(left)?;
         let right_value = self.evaluate(right)?;
-        let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_)) ||
-                              !matches!(right_value, Value::Float(_) | Value::Integer(_));
-        let either_floating = matches!(left_value, Value::Float(_)) || matches!(right_value, Value::Float(_));
-    
+        let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_))
+            || !matches!(right_value, Value::Float(_) | Value::Integer(_));
+        let either_floating =
+            matches!(left_value, Value::Float(_)) || matches!(right_value, Value::Float(_));
+
         match operator.token_type {
             TokenType::Plus => {
                 // Handle string concatenation
@@ -218,7 +236,10 @@ impl Interpreter {
                 }
                 // Handle numeric addition
                 else if either_floating {
-                    return Ok(Value::Float(Self::as_number(operator, &left_value)? + Self::as_number(operator, &right_value)?));
+                    return Ok(Value::Float(
+                        Self::as_number(operator, &left_value)?
+                            + Self::as_number(operator, &right_value)?,
+                    ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two numbers or two strings for '+'");
@@ -230,7 +251,10 @@ impl Interpreter {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '-'");
                 } else if either_floating {
-                    return Ok(Value::Float(Self::as_number(operator, &left_value)? - Self::as_number(operator, &right_value)?));
+                    return Ok(Value::Float(
+                        Self::as_number(operator, &left_value)?
+                            - Self::as_number(operator, &right_value)?,
+                    ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two integers for '-'");
@@ -242,7 +266,10 @@ impl Interpreter {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '*'");
                 } else if either_floating {
-                    return Ok(Value::Float(Self::as_number(operator, &left_value)? * Self::as_number(operator, &right_value)?));
+                    return Ok(Value::Float(
+                        Self::as_number(operator, &left_value)?
+                            * Self::as_number(operator, &right_value)?,
+                    ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
                         return Self::error(operator, "Operands must be two integers for '*'");
@@ -254,27 +281,44 @@ impl Interpreter {
                 if non_numeric {
                     return Self::error(operator, "Operands must be two numbers for '/'");
                 }
-                return Ok(Value::Float(Self::as_number(operator, &left_value)? / Self::as_number(operator, &right_value)?));
+                Ok(Value::Float(
+                    Self::as_number(operator, &left_value)? / Self::as_number(operator, &right_value)?,
+                ))
             }
             TokenType::Greater => {
-                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
-                return Ok(Value::Bool(num_left > num_right));
+                let (num_left, num_right) = (
+                    Self::as_number(operator, &left_value)?,
+                    Self::as_number(operator, &right_value)?,
+                );
+                Ok(Value::Bool(num_left > num_right))
             }
             TokenType::GreaterEqual => {
-                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
-                return Ok(Value::Bool(num_left >= num_right));
+                let (num_left, num_right) = (
+                    Self::as_number(operator, &left_value)?,
+                    Self::as_number(operator, &right_value)?,
+                );
+                Ok(Value::Bool(num_left >= num_right))
             }
             TokenType::Less => {
-                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
-                return Ok(Value::Bool(num_left < num_right));
+                let (num_left, num_right) = (
+                    Self::as_number(operator, &left_value)?,
+                    Self::as_number(operator, &right_value)?,
+                );
+                Ok(Value::Bool(num_left < num_right))
             }
             TokenType::LessEqual => {
-                let (num_left, num_right) = (Self::as_number(operator, &left_value)?, Self::as_number(operator, &right_value)?);
-                return Ok(Value::Bool(num_left <= num_right));
+                let (num_left, num_right) = (
+                    Self::as_number(operator, &left_value)?,
+                    Self::as_number(operator, &right_value)?,
+                );
+                Ok(Value::Bool(num_left <= num_right))
             }
-            TokenType::EqualEqual => return Ok(Value::Bool(is_equal(&left_value, &right_value))),
-            TokenType::BangEqual => return Ok(Value::Bool(!is_equal(&left_value, &right_value))),
-            _ => Self::error(operator, &format!("Unsupported binary operator: {:?}", operator.token_type)),
+            TokenType::EqualEqual => Ok(Value::Bool(is_equal(&left_value, &right_value))),
+            TokenType::BangEqual => Ok(Value::Bool(!is_equal(&left_value, &right_value))),
+            _ => Self::error(
+                operator,
+                &format!("Unsupported binary operator: {:?}", operator.token_type),
+            ),
         }
     }
 
@@ -288,13 +332,13 @@ impl Interpreter {
                 } else {
                     Value::Integer(*n as isize)
                 }
-            },
+            }
             Some(Literal::String(s)) => Value::Str(s.clone()),
             Some(Literal::Boolean(b)) => Value::Bool(*b),
             Some(Literal::Nil) => Value::Nil,
             None => Value::Nil,
         };
-        return Ok(v);
+        Ok(v)
     }
 
     // Evaluate the inner expression
@@ -320,7 +364,10 @@ impl Interpreter {
             }
             // Return the logical NOT of the truthiness of the right-hand side
             TokenType::Bang => Ok(Value::Bool(!Self::is_truthy(&right_value))),
-            _ => Self::error(operator, &format!("Unsupported unary operator: {:?}", operator.token_type)),
+            _ => Self::error(
+                operator,
+                &format!("Unsupported unary operator: {:?}", operator.token_type),
+            ),
         }
     }
 
@@ -328,7 +375,9 @@ impl Interpreter {
         // Evaluate the value expression
         let evaluated_value = self.evaluate(value_expr)?;
         // Assign the value to the variable in the environment
-        self.environment.borrow_mut().assign(&name.lexeme, evaluated_value.clone(), name.line)?;
+        self.environment
+            .borrow_mut()
+            .assign(&name.lexeme, evaluated_value.clone(), name.line)?;
         // Return the assigned value
         Ok(evaluated_value)
     }
@@ -340,7 +389,7 @@ impl Interpreter {
         // If the left value is truthy, return it, because now we know at least one operand is truthy
         if Self::is_truthy(&left_value) {
             Ok(left_value)
-        } 
+        }
         // Now evaluate and return the right expression
         else {
             self.evaluate(right)
@@ -363,7 +412,8 @@ impl Interpreter {
 
     fn call_expr(&mut self, callee: &Expr, paren: &Token, arguments: &Vec<Expr>) -> InterpreterResult<Value> {
         // Evaluate the callee expression to get the function to call (usually an identifier)
-        let Value::Callable(function) = self.evaluate(callee)? else { // Not a callable
+        let Value::Callable(function) = self.evaluate(callee)? else {
+            // Not a callable
             return Self::error(paren, "Can only call functions and classes.");
         };
 
@@ -376,7 +426,14 @@ impl Interpreter {
 
         // Check arity
         if arg_values.len() != function.arity() {
-            return Self::error(paren, &format!("Expected {} arguments but got {}.", function.arity(), arg_values.len()));
+            return Self::error(
+                paren,
+                &format!(
+                    "Expected {} arguments but got {}.",
+                    function.arity(),
+                    arg_values.len()
+                ),
+            );
         }
 
         // Call the function

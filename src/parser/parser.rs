@@ -1,12 +1,9 @@
-use crate::token::Literal;
 use std::rc::Rc;
-use crate::token::Token;
-use crate::token::TokenType;
-use crate::expr_syntax_tree::{Expr};
-use crate::token::Keyword::{Nil, False, True};
-use crate::token::Keyword;
-use crate::statement_syntax_tree::{Statement, StatementRef};
-use crate::parse_error::ParseError;
+
+use crate::ast::{Expr, Statement, StatementRef};
+use crate::lexer::token::Keyword::{False, Nil, True};
+use crate::lexer::token::{Keyword, Literal, Token, TokenType};
+use crate::parser::error::ParseError;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -15,18 +12,21 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self {
-            tokens,
-            current: 0,
-        }
+        Self { tokens, current: 0 }
     }
 
     // Report a parse error
     fn error<T>(token: &Token, message: &str) -> Result<T, ParseError> {
         if token.token_type == TokenType::Eof {
-            return Err(ParseError::new(token.line, format!("Error at end: {}", message)));
+            Err(ParseError::new(
+                token.line,
+                format!("Error at end: {}", message),
+            ))
         } else {
-            return Err(ParseError::new(token.line, format!("Error at '{}': {}", token.lexeme, message)));
+            Err(ParseError::new(
+                token.line,
+                format!("Error at '{}': {}", token.lexeme, message),
+            ))
         }
     }
 
@@ -42,7 +42,14 @@ impl Parser {
 
             match token.token_type {
                 TokenType::Keyword(kw) => match kw {
-                    Keyword::Class | Keyword::Fun | Keyword::Var | Keyword::For | Keyword::If | Keyword::While | Keyword::Print | Keyword::Return => {
+                    Keyword::Class
+                    | Keyword::Fun
+                    | Keyword::Var
+                    | Keyword::For
+                    | Keyword::If
+                    | Keyword::While
+                    | Keyword::Print
+                    | Keyword::Return => {
                         return;
                     }
                     _ => {}
@@ -59,15 +66,15 @@ impl Parser {
         if self.current < self.tokens.len() {
             let token = self.tokens[self.current].clone();
             self.current += 1;
-            return Ok(token);
+            Ok(token)
         } else {
-            return Self::error(&self.tokens[self.tokens.len() - 1], "Unexpected end of input");
+            Self::error(&self.tokens[self.tokens.len() - 1], "Unexpected end of input")
         }
     }
 
     // Get the current token without advancing the parser
     fn current_token(&self) -> Option<&Token> {
-        return self.tokens.get(self.current);
+        self.tokens.get(self.current)
     }
 
     // Check if the current token is of one of the expected types
@@ -75,7 +82,7 @@ impl Parser {
         if let Some(token) = self.current_token() {
             return expected.contains(&token.token_type);
         }
-        return false;
+        false
     }
 
     // Consume a token of the expected type, or return an error
@@ -87,7 +94,7 @@ impl Parser {
             return Self::error(&current_token, error_message);
         }
 
-        return Ok(current_token);
+        Ok(current_token)
     }
 
     fn consume_any(&mut self) {
@@ -102,12 +109,11 @@ impl Parser {
             let statement = self.declaration();
             if let Err(e) = &statement {
                 eprintln!("{}", e);
-            }
-            else if let Ok(statement) = statement {
+            } else if let Ok(statement) = statement {
                 statements.push(Rc::new(statement));
             }
         }
-        return statements;
+        statements
     }
 
     fn declaration(&mut self) -> Result<Statement, ParseError> {
@@ -119,15 +125,17 @@ impl Parser {
             });
         } else if self.check(&[TokenType::Keyword(Keyword::Fun)]) {
             // Function declaration
-            return self.function_declaration("function").or_else(|err: ParseError| {
-                self.synchronize(); // Synchronize on error
-                Err(err)
-            });
+            return self
+                .function_declaration("function")
+                .or_else(|err: ParseError| {
+                    self.synchronize(); // Synchronize on error
+                    Err(err)
+                });
         }
-        return self.statement().or_else(|err: ParseError| {
+        self.statement().or_else(|err: ParseError| {
             self.synchronize(); // Synchronize on error
             Err(err)
-        });
+        })
     }
 
     fn var_declaration(&mut self) -> Result<Statement, ParseError> {
@@ -149,12 +157,15 @@ impl Parser {
         };
 
         // Consume the semicolon
-        self.consume(TokenType::Semicolon, "Expect ';' after variable declaration.")?;
+        self.consume(
+            TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        )?;
 
-        return Ok(Statement::Var {
+        Ok(Statement::Var {
             name: name_token,
             initializer,
-        });
+        })
     }
 
     fn function_declaration(&mut self, kind: &str) -> Result<Statement, ParseError> {
@@ -165,7 +176,10 @@ impl Parser {
         let name_token = self.consume(TokenType::Identifier, &format!("Expect {} name.", kind))?;
 
         // Consume the '(' token
-        self.consume(TokenType::LeftParen, &format!("Expect '(' after {} name.", kind))?;
+        self.consume(
+            TokenType::LeftParen,
+            &format!("Expect '(' after {} name.", kind),
+        )?;
 
         // Parse the parameters
         let mut params: Vec<Token> = Vec::new();
@@ -187,18 +201,17 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
 
         // Consume the '{' token
-        self.consume(TokenType::LeftBrace, &format!("Expect '{{' before {} body.", kind))?;
+        self.consume(
+            TokenType::LeftBrace,
+            &format!("Expect '{{' before {} body.", kind),
+        )?;
 
         // Parse the function body
         let Statement::Block { statements: body } = self.block_statement()? else {
             return Self::error(&name_token, "Expect function body.");
         };
 
-        return Ok(Statement::Function {
-            name: name_token,
-            params,
-            body,
-        });
+        Ok(Statement::Function { name: name_token, params, body })
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
@@ -230,9 +243,7 @@ impl Parser {
         // Consume the semicolon at the end of the print statement
         self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
 
-        return Ok(Statement::Print {
-            expression,
-        });
+        Ok(Statement::Print { expression })
     }
 
     fn expression_statement(&mut self) -> Result<Statement, ParseError> {
@@ -241,9 +252,7 @@ impl Parser {
         // Consume the semicolon at the end of the expression statement
         self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
 
-        return Ok(Statement::Expression {
-            expression,
-        });
+        Ok(Statement::Expression { expression })
     }
 
     fn block_statement(&mut self) -> Result<Statement, ParseError> {
@@ -264,9 +273,7 @@ impl Parser {
         // Consume the '}' token
         self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
 
-        return Ok(Statement::Block {
-            statements,
-        });
+        Ok(Statement::Block { statements })
     }
 
     fn if_statement(&mut self) -> Result<Statement, ParseError> {
@@ -292,11 +299,11 @@ impl Parser {
             None
         };
 
-        return Ok(Statement::If {
+        Ok(Statement::If {
             condition,
             then_branch: Rc::new(then_branch),
-            else_branch: else_branch,
-        });
+            else_branch,
+        })
     }
 
     fn while_statement(&mut self) -> Result<Statement, ParseError> {
@@ -311,10 +318,7 @@ impl Parser {
         // Parse the body statement (the thing that gets repeated)
         let body: StatementRef = Rc::new(self.statement()?);
 
-        return Ok(Statement::While {
-            condition,
-            body,
-        });
+        Ok(Statement::While { condition, body })
     }
 
     // This is not a new kind of statement, we are just desugaring a for loop into a while loop and some extra statements
@@ -347,8 +351,8 @@ impl Parser {
                     token_type: TokenType::Keyword(Keyword::True),
                     lexeme: "true".to_string(),
                     literal: Some(Literal::Boolean(true)),
-                    line: 0
-                }
+                    line: 0,
+                },
             }
         };
         self.consume(TokenType::Semicolon, "Expect ';' after loop condition.")?;
@@ -368,25 +372,25 @@ impl Parser {
             // Combine what's in the body with the increment expression
             body = Statement::Block {
                 statements: vec![Rc::new(body), Rc::new(Statement::Expression {
-                    expression: increment.unwrap()
-                })]
+                    expression: increment.unwrap(),
+                })],
             };
         }
 
         // Create a while statement with the condition specified and the body we made (with the increment)
         body = Statement::While {
             condition,
-            body: Rc::new(body)
+            body: Rc::new(body),
         };
 
         // If there is an initializer, add it as a statement before the while loop
         if initializer.is_some() {
             body = Statement::Block {
-                statements: vec![Rc::new(initializer.unwrap()), Rc::new(body)]
+                statements: vec![Rc::new(initializer.unwrap()), Rc::new(body)],
             };
         }
 
-        return Ok(body);
+        Ok(body)
     }
 
     fn return_statement(&mut self) -> Result<Statement, ParseError> {
@@ -403,14 +407,11 @@ impl Parser {
         // Consume the semicolon at the end of the return statement
         self.consume(TokenType::Semicolon, "Expect ';' after return value.")?;
 
-        return Ok(Statement::Return {
-            keyword,
-            value,
-        });
+        Ok(Statement::Return { keyword, value })
     }
 
     pub fn expression(&mut self) -> Result<Expr, ParseError> {
-        return self.assignment();
+        self.assignment()
     }
 
     fn assignment(&mut self) -> Result<Expr, ParseError> {
@@ -419,7 +420,7 @@ impl Parser {
         if self.check(&[TokenType::Equal]) {
             let equals = self.advance()?;
             let value = self.assignment()?;
-            
+
             // If the left-hand side is a variable, create an assignment expression
             if let Expr::Variable { name } = expr {
                 return Ok(Expr::Assign {
@@ -431,7 +432,7 @@ impl Parser {
             return Self::error(&equals, "Invalid assignment target.");
         }
 
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn logic_or(&mut self) -> Result<Expr, ParseError> {
@@ -447,7 +448,7 @@ impl Parser {
             };
         }
 
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn logic_and(&mut self) -> Result<Expr, ParseError> {
@@ -463,7 +464,7 @@ impl Parser {
             };
         }
 
-        return Ok(expr);
+        Ok(expr)
     }
 
     // Lowest precedence, going up from here
@@ -483,7 +484,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // A comparison is a term followed by zero or more <, >, <=, >=, each followed by a term, like 1 < 2 >= 3
@@ -503,7 +504,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // A term is a factor followed by zero or more + or -, each followed by a factor, like 1 + 2 - 3
@@ -523,7 +524,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // A factor is a unary expression followed by zero or more * or /, each followed by a unary expression, like -4 / 2 * 3
@@ -543,7 +544,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     // A unary expression is either a primary expression or a unary operator followed by another unary expression, like -!!5
@@ -558,7 +559,7 @@ impl Parser {
             });
         }
 
-        return self.call();
+        self.call()
     }
 
     fn call(&mut self) -> Result<Expr, ParseError> {
@@ -572,7 +573,7 @@ impl Parser {
             }
         }
 
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
@@ -596,11 +597,11 @@ impl Parser {
 
         let paren = self.consume(TokenType::RightParen, "Expect ')' after arguments.")?;
 
-        return Ok(Expr::Call {
+        Ok(Expr::Call {
             callee: Box::new(callee),
             paren,
-            arguments
-        });
+            arguments,
+        })
     }
 
     // A primary expression is either a literal value or a parenthesized expression
@@ -609,31 +610,21 @@ impl Parser {
 
         match current_token.token_type {
             TokenType::Number | TokenType::String => {
-                return Ok(Expr::Literal{
-                    value: current_token
-                });
-            },
+                Ok(Expr::Literal { value: current_token })
+            }
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 self.consume(TokenType::RightParen, "Expect expression.")?;
-                return Ok(Expr::Grouping{
-                    expression: Box::new(expr)
-                });
+                Ok(Expr::Grouping {
+                    expression: Box::new(expr),
+                })
             }
             TokenType::Keyword(Nil) | TokenType::Keyword(False) | TokenType::Keyword(True) => {
-                return Ok(Expr::Literal{
-                    value: current_token
-                });
+                Ok(Expr::Literal { value: current_token })
             }
             TokenType::Keyword(Keyword::Fun) => self.lambda_expression(),
-            TokenType::Identifier => {
-                return Ok(Expr::Variable{
-                    name: current_token
-                });
-            }
-            _ => {
-                return Self::error(&current_token, "Expect expression.");
-            }
+            TokenType::Identifier => Ok(Expr::Variable { name: current_token }),
+            _ => Self::error(&current_token, "Expect expression."),
         }
     }
 
@@ -668,9 +659,6 @@ impl Parser {
             return Self::error(&params[0], "Expect lambda body.");
         };
 
-        return Ok(Expr::Lambda {
-            params,
-            body,
-        });
+        Ok(Expr::Lambda { params, body })
     }
 }

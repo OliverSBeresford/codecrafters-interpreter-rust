@@ -1,8 +1,9 @@
-use crate::callable::Callable;
-use crate::control_flow::ControlFlow;
-use crate::value::Value;
-use crate::interpreter::Interpreter;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::runtime::callable::Callable;
+use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::interpreter::Interpreter;
+use crate::runtime::value::Value;
 
 #[derive(Debug)]
 pub struct Clock;

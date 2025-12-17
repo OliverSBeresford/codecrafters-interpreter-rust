@@ -1,6 +1,7 @@
-use crate::expr_syntax_tree::{Expr};
 use std::rc::Rc;
-use crate::token::Token;
+
+use crate::ast::expr::Expr;
+use crate::lexer::token::Token;
 
 pub type StatementRef = Rc<Statement>;
 

@@ -1,4 +1,5 @@
 use std::fmt;
+
 // Define a RuntimeError struct to represent runtime errors during interpretation
 pub struct RuntimeError {
     pub line: usize,
@@ -7,10 +8,7 @@ pub struct RuntimeError {
 
 impl RuntimeError {
     pub fn new(line: usize, message: String) -> Self {
-        return RuntimeError {
-            line,
-            message,
-        };
+        RuntimeError { line, message }
     }
 }
 

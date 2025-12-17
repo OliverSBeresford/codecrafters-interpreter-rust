@@ -2,25 +2,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 
-mod scanner;
-mod token;
-mod expr_syntax_tree;
-mod parse;
-mod ast_printer;
-mod interpreter;
-mod runtime_error;
-mod statement_syntax_tree;
-mod parse_error;
-mod environment;
-mod value;
-mod callable;
-mod function;
-mod clock;
-mod control_flow;
-
-use scanner::scan;
-use parse::Parser;
-use control_flow::ControlFlow;
+use rust_interpreter::{AstPrinter, ControlFlow, Interpreter, Parser, scan};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -63,7 +45,7 @@ fn main() {
             // Print the AST using the visit method
             match expression {
                 Ok(expr) => {
-                    ast_printer::AstPrinter.print(&expr);
+                    AstPrinter.print(&expr);
                 }
                 Err(error) => {
                     eprintln!("{}", error);
@@ -83,7 +65,7 @@ fn main() {
             });
 
             // Create an interpreter and evaluate the expression
-            let mut interpreter = interpreter::Interpreter::new();
+            let mut interpreter = Interpreter::new();
             let result = interpreter.evaluate(&expression).unwrap_or_else(|control_flow| {
                 if let ControlFlow::RuntimeError(runtime_error) = control_flow {
                     eprintln!("{}", runtime_error);
@@ -104,7 +86,7 @@ fn main() {
             let statements = parser.parse();
 
             // Create an interpreter and execute the statements
-            let mut interpreter = interpreter::Interpreter::new();
+            let mut interpreter = Interpreter::new();
             interpreter.interpret(statements);
         }
         "dbg" => {

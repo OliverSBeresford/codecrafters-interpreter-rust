@@ -1,6 +1,6 @@
-use crate::expr_syntax_tree::{Expr};
-use crate::token::Token;
-use crate::statement_syntax_tree::StatementRef;
+use crate::ast::expr::Expr;
+use crate::ast::statement::StatementRef;
+use crate::lexer::token::Token;
 
 type Output = String;
 

@@ -1,9 +1,10 @@
-use crate::control_flow::ControlFlow;
-use crate::value::Value;
-use std::collections::HashMap;
-use crate::runtime_error::RuntimeError;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::runtime_error::RuntimeError;
+use crate::runtime::value::Value;
 
 // Type for a reference to an Environment wrapped in Rc and RefCell for shared ownership and mutability
 pub type EnvRef = Rc<RefCell<Environment>>;
@@ -21,10 +22,10 @@ pub struct Environment {
 
 impl Environment {
     pub fn new(enclosing: Option<EnvRef>) -> EnvRef {
-        return Rc::new(RefCell::new(Environment {
+        Rc::new(RefCell::new(Environment {
             enclosing,
             values: HashMap::new(),
-        }));
+        }))
     }
 
     pub fn define(&mut self, name: String, value: Value) {
@@ -43,7 +44,10 @@ impl Environment {
         }
 
         // If the variable is not found, return an error
-        Err(ControlFlow::RuntimeError(RuntimeError::new(line, format!("Undefined variable '{}'.", name))))
+        Err(ControlFlow::RuntimeError(RuntimeError::new(
+            line,
+            format!("Undefined variable '{}'.", name),
+        )))
     }
 
     pub fn assign(&mut self, name: &str, value: Value, line: usize) -> EnvResult<()> {
@@ -59,6 +63,9 @@ impl Environment {
         }
 
         // Variable is not defined in any environment, return an error
-        return Err(ControlFlow::RuntimeError(RuntimeError::new(line, format!("Undefined variable '{}'.", name))));
+        Err(ControlFlow::RuntimeError(RuntimeError::new(
+            line,
+            format!("Undefined variable '{}'.", name),
+        )))
     }
 }

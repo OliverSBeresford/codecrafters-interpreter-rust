@@ -1,11 +1,8 @@
+use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;
-use std::fmt;
 
-use crate::token::Token;
-use crate::token::TokenType;
-use crate::token::Literal;
-use crate::token::Keyword;
+use crate::lexer::token::{Keyword, Literal, Token, TokenType};
 
 pub struct TokenArray {
     pub tokens: Vec<Token>,
@@ -35,7 +32,7 @@ pub fn scan(input: &str) -> TokenArray {
         println!("{}", scanner.tokens);
         std::process::exit(65);
     }
-    return scanner.tokens;
+    scanner.tokens
 }
 
 struct Scanner<'a> {
@@ -104,7 +101,7 @@ impl<'a> Scanner<'a> {
         let c = self.advance();
         if c.is_none() {
             return;
-        };
+        }
         let c = c.unwrap();
 
         match c {
@@ -217,10 +214,7 @@ impl<'a> Scanner<'a> {
             TokenType::Keyword(Keyword::Nil) => Some(Literal::Nil),
             _ => None,
         };
-        self.make_token(
-            token_type,
-            literal,
-        );
+        self.make_token(token_type, literal);
     }
 
     // Method to scan number literals
@@ -233,13 +227,11 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
-        let number_literal: f64 = self.get_lexeme()
+        let number_literal: f64 = self
+            .get_lexeme()
             .parse()
             .expect("Failed to parse number literal");
-        self.make_token(
-            TokenType::Number,
-            Some(Literal::Number(number_literal)),
-        );
+        self.make_token(TokenType::Number, Some(Literal::Number(number_literal)));
     }
 
     // Method to scan string literals
@@ -248,7 +240,10 @@ impl<'a> Scanner<'a> {
             if c == '"' {
                 // Consume the closing quote
                 let string_literal = &self.input[self.start + 1..self.current - 1];
-                self.make_token(TokenType::String, Some(Literal::String(string_literal.to_string())));
+                self.make_token(
+                    TokenType::String,
+                    Some(Literal::String(string_literal.to_string())),
+                );
                 return;
             }
         }

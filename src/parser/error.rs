@@ -1,6 +1,6 @@
 use std::fmt;
 
-// Define a ParseError struct to represent runtime errors during interpretation
+// ParseError represents syntax errors detected during parsing
 pub struct ParseError {
     pub line: usize,
     pub message: String,
@@ -8,10 +8,7 @@ pub struct ParseError {
 
 impl ParseError {
     pub fn new(line: usize, message: String) -> Self {
-        return ParseError {
-            line,
-            message,
-        };
+        ParseError { line, message }
     }
 }
 

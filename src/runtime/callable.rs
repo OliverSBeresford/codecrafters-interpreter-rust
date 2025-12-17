@@ -1,7 +1,8 @@
-use crate::control_flow::ControlFlow;
-use crate::interpreter::Interpreter;
-use crate::value::Value;
 use std::fmt::Debug;
+
+use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::interpreter::Interpreter;
+use crate::runtime::value::Value;
 
 pub trait Callable: Debug {
     fn arity(&self) -> usize;
