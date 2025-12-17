@@ -11,6 +11,10 @@ impl AstPrinter {
         println!("{}", self.visit(expr));
     }
 
+    pub fn print_to_string(&self, expr: &Expr) -> String {
+        self.visit(expr)
+    }
+
     pub fn visit(&self, expr: &Expr) -> Output {
         match expr {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
