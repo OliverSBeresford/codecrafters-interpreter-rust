@@ -190,7 +190,7 @@ impl Interpreter {
         Err(ControlFlow::Return(return_value))
     }
 
-    fn execute(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
+    pub fn execute(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
         match statement.as_ref() {
             Statement::Expression { expression } => self.execute_expression(expression),
             Statement::Print { expression } => self.execute_print(expression),
