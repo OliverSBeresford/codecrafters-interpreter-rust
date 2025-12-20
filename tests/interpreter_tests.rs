@@ -1,7 +1,7 @@
 use rust_interpreter::{Interpreter, Parser, Value, scan};
 use rust_interpreter::runtime::{Environment, EnvRef, Function, Callable};
-use rust_interpreter::StatementRef;
 use rust_interpreter::Expr;
+use rust_interpreter::ast::Statement;
 
 fn parse_expr(input: &str) -> (Interpreter, Expr) {
     let tokens = scan(input);
@@ -10,7 +10,7 @@ fn parse_expr(input: &str) -> (Interpreter, Expr) {
     (Interpreter::new(), expr)
 }
 
-fn parse_stmts(input: &str) -> (Interpreter, Vec<StatementRef>) {
+fn parse_stmts(input: &str) -> (Interpreter, Vec<Statement>) {
     let tokens = scan(input);
     let mut parser = Parser::new(tokens.tokens);
     let statements = parser.parse();
@@ -78,7 +78,7 @@ fn function_call_returns_sum() {
     interpreter.environment = env.clone();
 
     // Build function from statement
-    let func = Function::from_statement(stmt, env.clone()).unwrap_or_else(|_| panic!("function build error"));
+    let func = Function::from_statement(&stmt, env.clone()).unwrap_or_else(|_| panic!("function build error"));
     
     // Call the function with args
     let result = func

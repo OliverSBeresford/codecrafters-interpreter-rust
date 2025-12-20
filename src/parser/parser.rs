@@ -1,10 +1,9 @@
+use crate::ast::{Expr, Statement, Depth};
 use std::rc::Rc;
-
-use crate::ast::{Expr, Statement, StatementRef};
+use std::cell::RefCell;
 use crate::lexer::token::Keyword::{False, Nil, True};
 use crate::lexer::token::{Keyword, Literal, Token, TokenType};
 use crate::parser::error::ParseError;
-
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
@@ -101,8 +100,8 @@ impl Parser {
         let _ = self.advance();
     }
 
-    pub fn parse(&mut self) -> Vec<StatementRef> {
-        let mut statements: Vec<StatementRef> = Vec::new();
+    pub fn parse(&mut self) -> Vec<Statement> {
+        let mut statements: Vec<Statement> = Vec::new();
 
         // Parse statements until the end of the token stream (-1 for EOF)
         while self.current < self.tokens.len() - 1 {
@@ -110,9 +109,10 @@ impl Parser {
             if let Err(e) = &statement {
                 eprintln!("{}", e);
             } else if let Ok(statement) = statement {
-                statements.push(Rc::new(statement));
+                statements.push(statement);
             }
         }
+
         statements
     }
 
@@ -211,7 +211,7 @@ impl Parser {
             return Self::error(&name_token, "Expect function body.");
         };
 
-        Ok(Statement::Function { name: name_token, params, body })
+        Ok(Statement::Function { name: name_token, params, body: Rc::new(RefCell::new(body)) })
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
@@ -262,12 +262,12 @@ impl Parser {
         }
 
         // Create a vector to hold the statements in the block
-        let mut statements: Vec<StatementRef> = Vec::new();
+        let mut statements: Vec<Statement> = Vec::new();
 
         // Parse statements until we find a '}'
         while !self.check(&[TokenType::RightBrace]) && self.current < self.tokens.len() - 1 {
             let declaration = self.declaration()?;
-            statements.push(Rc::new(declaration));
+            statements.push(declaration);
         }
 
         // Consume the '}' token
@@ -289,19 +289,19 @@ impl Parser {
         let then_branch = self.statement()?;
 
         // Optional else branch
-        let else_branch: Option<StatementRef> = if self.check(&[TokenType::Keyword(Keyword::Else)]) {
+        let else_branch: Option<Box<Statement>> = if self.check(&[TokenType::Keyword(Keyword::Else)]) {
             // Consume the 'else' keyword
             let _else_token = self.advance();
 
             // Parse the else branch statement
-            Some(Rc::new(self.statement()?))
+            Some(Box::new(self.statement()?))
         } else {
             None
         };
 
         Ok(Statement::If {
             condition,
-            then_branch: Rc::new(then_branch),
+            then_branch: Box::new(then_branch),
             else_branch,
         })
     }
@@ -316,9 +316,9 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after while condition.")?;
 
         // Parse the body statement (the thing that gets repeated)
-        let body: StatementRef = Rc::new(self.statement()?);
+        let body: Statement = self.statement()?;
 
-        Ok(Statement::While { condition, body })
+        Ok(Statement::While { condition, body: Box::new(body) })
     }
 
     // This is not a new kind of statement, we are just desugaring a for loop into a while loop and some extra statements
@@ -371,22 +371,22 @@ impl Parser {
         if increment.is_some() {
             // Combine what's in the body with the increment expression
             body = Statement::Block {
-                statements: vec![Rc::new(body), Rc::new(Statement::Expression {
+                statements: vec![body.into(), Statement::Expression {
                     expression: increment.unwrap(),
-                })],
+                }.into()],
             };
         }
 
         // Create a while statement with the condition specified and the body we made (with the increment)
         body = Statement::While {
             condition,
-            body: Rc::new(body),
+            body: body.into(),
         };
 
         // If there is an initializer, add it as a statement before the while loop
         if initializer.is_some() {
             body = Statement::Block {
-                statements: vec![Rc::new(initializer.unwrap()), Rc::new(body)],
+                statements: vec![initializer.unwrap(), body],
             };
         }
 
@@ -422,10 +422,11 @@ impl Parser {
             let value = self.assignment()?;
 
             // If the left-hand side is a variable, create an assignment expression
-            if let Expr::Variable { name } = expr {
+            if let Expr::Variable { name, .. } = expr {
                 return Ok(Expr::Assign {
                     name,
                     value: Box::new(value),
+                    depth: Depth::Unresolved, // Depth will be resolved later
                 });
             }
 
@@ -623,7 +624,7 @@ impl Parser {
                 Ok(Expr::Literal { value: current_token })
             }
             TokenType::Keyword(Keyword::Fun) => self.lambda_expression(),
-            TokenType::Identifier => Ok(Expr::Variable { name: current_token }),
+            TokenType::Identifier => Ok(Expr::Variable { name: current_token, depth: Depth::Unresolved }),
             _ => Self::error(&current_token, "Expect expression."),
         }
     }
@@ -659,6 +660,6 @@ impl Parser {
             return Self::error(&params[0], "Expect lambda body.");
         };
 
-        Ok(Expr::Lambda { params, body })
+        Ok(Expr::Lambda { params, body: Rc::new(RefCell::new(body)) })
     }
 }

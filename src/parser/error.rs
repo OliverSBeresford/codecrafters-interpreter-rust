@@ -1,6 +1,7 @@
 use std::fmt;
 
 // ParseError represents syntax errors detected during parsing
+#[derive(Debug)]
 pub struct ParseError {
     pub line: usize,
     pub message: String,

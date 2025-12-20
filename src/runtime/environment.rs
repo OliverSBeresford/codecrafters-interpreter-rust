@@ -50,6 +50,22 @@ impl Environment {
         )))
     }
 
+    /// Get a variable's value at a specific distance in the environment chain (recursive)
+    pub fn get_at(&self, distance: usize, name: &str, line: usize) -> EnvResult<Value> {
+        if distance == 0 {
+            return self.get(name, line);
+        }
+
+        if let Some(enclosing) = &self.enclosing {
+            return enclosing.borrow().get_at(distance - 1, name, line);
+        }
+
+        Err(ControlFlow::RuntimeError(RuntimeError::new(
+            line,
+            format!("Undefined variable '{}'.", name),
+        )))
+    }
+
     pub fn assign(&mut self, name: &str, value: Value, line: usize) -> EnvResult<()> {
         // If the variable exists in the current environment, update its value
         if self.values.contains_key(name) {
@@ -63,6 +79,24 @@ impl Environment {
         }
 
         // Variable is not defined in any environment, return an error
+        Err(ControlFlow::RuntimeError(RuntimeError::new(
+            line,
+            format!("Undefined variable '{}'.", name),
+        )))
+    }
+
+    /// Assign a variable's value at a specific distance in the environment chain (recursive)
+    pub fn assign_at(&mut self, distance: usize, name: &str, value: Value, line: usize) -> EnvResult<()> {
+        if distance == 0 {
+            self.assign(name, value, line)?;
+            
+            return Ok(())
+        }
+
+        if let Some(enclosing) = &self.enclosing {
+            return enclosing.borrow_mut().assign_at(distance - 1, name, value, line);
+        }
+
         Err(ControlFlow::RuntimeError(RuntimeError::new(
             line,
             format!("Undefined variable '{}'.", name),

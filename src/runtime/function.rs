@@ -1,4 +1,6 @@
 use crate::ast::statement::Statement;
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::runtime::callable::Callable;
 use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::environment::{EnvRef, Environment};
@@ -9,21 +11,21 @@ use crate::runtime::value::Value;
 pub type FunctionResult<T> = Result<T, ControlFlow>;
 
 #[derive(Debug)]
-pub struct Function<'a> {
-    pub name: String,
-    pub params: Vec<String>,
-    pub body: &'a Vec<Statement>,
-    pub closure: EnvRef,
+pub struct Function {
+    name: String,
+    params: Vec<String>,
+    body: Rc<RefCell<Vec<Statement>>>,
+    closure: EnvRef,
 }
 
-impl<'a> Function<'a> {
+impl Function {
     // Create a Function from a Statement::Function
-    pub fn from_statement(stmt: &'a Statement, closure: EnvRef) -> FunctionResult<Self> {
+    pub fn from_statement(stmt: &Statement, closure: EnvRef) -> FunctionResult<Self> {
         if let Statement::Function { name, params, body } = stmt {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
-                body,
+                body: Rc::clone(body),
                 closure,
             })
         } else {
@@ -34,9 +36,13 @@ impl<'a> Function<'a> {
             )))
         }
     }
+
+    pub fn new(name: String, params: Vec<String>, body: Rc<RefCell<Vec<Statement>>>, closure: EnvRef) -> Self {
+        Function { name, params, body, closure }
+    }
 }
 
-impl<'a> Callable<'a> for Function<'a> {
+impl Callable for Function {
     fn arity(&self) -> usize {
         self.params.len()
     }
@@ -52,7 +58,8 @@ impl<'a> Callable<'a> for Function<'a> {
         }
 
         // Execute the function body in the new environment, handling return values via ControlFlow
-        match interpreter.execute_block(&self.body, environment) {
+        let borrowed = self.body.borrow();
+        match interpreter.execute_block(&*borrowed, environment) {
             Ok(_) => {}
             Err(ControlFlow::Return(return_value)) => {
                 interpreter.environment = previous_environment;

@@ -1,12 +1,14 @@
 use std::fmt;
 use std::rc::Rc;
+use std::cell::RefCell;
 
-use crate::ast::{Expr, Statement};
+use crate::ast::{Expr, Statement, Depth};
 use crate::lexer::token::{Literal, Token, TokenType};
 use crate::runtime::clock::Clock;
 use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::environment::{EnvRef, Environment};
 use crate::runtime::function::Function;
+use crate::runtime::callable::Callable;
 use crate::runtime::runtime_error::RuntimeError;
 use crate::runtime::value::Value;
 
@@ -82,6 +84,14 @@ impl Interpreter {
         }
     }
 
+    pub fn resolve(&mut self, expression: &mut Expr, depth: usize) {
+        if let Expr::Variable { depth: expr_depth, .. } = expression {
+            *expr_depth = Depth::Resolved(depth);
+        } else if let Expr::Assign { depth: expr_depth, .. } = expression {
+            *expr_depth = Depth::Resolved(depth);
+        }
+    }
+
     pub fn evaluate(&mut self, expression: &Expr) -> InterpreterResult<Value> {
         match expression {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
@@ -89,11 +99,8 @@ impl Interpreter {
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             // Handle variable expressions
-            Expr::Variable { name } => {
-                let value = self.environment.borrow().get(&name.lexeme, name.line)?;
-                Ok(value.clone())
-            }
-            Expr::Assign { name, value } => self.assign_variable(name, value),
+            Expr::Variable { name, depth } => self.lookup_variable(name, *depth),
+            Expr::Assign { name, value, depth } => self.assign_variable(name, value, *depth),
             Expr::LogicOr { left, right } => self.logic_or(left, right),
             Expr::LogicAnd { left, right } => self.logic_and(left, right),
             Expr::Call { callee, paren, arguments } => self.call_expr(callee, paren, arguments),
@@ -168,12 +175,12 @@ impl Interpreter {
     // Declare and define a function
     fn execute_function_statement(&mut self, statement: &Statement) -> InterpreterResult<Value> {
         // Create a Function from the statement
-        let function: Function = Function::from_statement(statement.clone(), self.environment.clone())?;
+        let function: Function = Function::from_statement(statement, self.environment.clone())?;
 
         // Define the function in the current environment
         self.environment
             .borrow_mut()
-            .define(function.name.clone(), Value::Callable(Rc::new(function)));
+            .define(function.name().to_string(), Value::Callable(Rc::new(function)));
 
         Ok(Value::Nil)
     }
@@ -197,13 +204,13 @@ impl Interpreter {
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
             // Execute a block statement in a new enclosed environment
             Statement::Block { statements } => {
-                self.execute_block(&**statements, Environment::new(Some(self.environment.clone())))
+                self.execute_block(&statements, Environment::new(Some(self.environment.clone())))
             }
             Statement::If { condition, then_branch, else_branch } => {
                 self.execute_if_statement(condition, then_branch, else_branch)
             }
             Statement::While { condition, body } => self.execute_while_statement(condition, body),
-            Statement::Function { name: _, params: _, body: _ } => self.execute_function_statement(statement), // Declare function
+            Statement::Function { .. } => self.execute_function_statement(statement), // Declare function
             Statement::Return { keyword, value } => self.execute_return_statement(keyword, value),
         }
     }
@@ -371,13 +378,31 @@ impl Interpreter {
         }
     }
 
-    fn assign_variable(&mut self, name: &Token, value_expr: &Expr) -> InterpreterResult<Value> {
+    fn lookup_variable(&mut self, name: &Token, depth: Depth) -> InterpreterResult<Value> {
+        match depth {
+            Depth::Unresolved => self.globals.borrow().get(&name.lexeme, name.line),
+            Depth::Resolved(distance) => self.environment.borrow().get_at(distance, &name.lexeme, name.line),
+        }
+    }
+
+    fn assign_variable(&mut self, name: &Token, value_expr: &Expr, depth: Depth) -> InterpreterResult<Value> {
         // Evaluate the value expression
         let evaluated_value = self.evaluate(value_expr)?;
-        // Assign the value to the variable in the environment
-        self.environment
-            .borrow_mut()
-            .assign(&name.lexeme, evaluated_value.clone(), name.line)?;
+
+        // Assign the value to the variable at the correct depth
+        match depth {
+            Depth::Unresolved => {
+                self.globals
+                    .borrow_mut()
+                    .assign(&name.lexeme, evaluated_value.clone(), name.line)?;
+            }
+            Depth::Resolved(distance) => {
+                self.environment
+                    .borrow_mut()
+                    .assign_at(distance, &name.lexeme, evaluated_value.clone(), name.line)?; // Ensure variable exists
+            }
+        }
+
         // Return the assigned value
         Ok(evaluated_value)
     }
@@ -440,14 +465,14 @@ impl Interpreter {
         Ok(function.call(self, arg_values)?)
     }
 
-    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Vec<Statement>) -> InterpreterResult<Value> {
+    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Rc<RefCell<Vec<Statement>>>) -> InterpreterResult<Value> {
         // Create a Function representing the lambda
-        let lambda_function = Function {
-            name: "<lambda>".to_string(),
-            params: params.iter().map(|param| param.lexeme.clone()).collect(),
-            body: body.clone(),
-            closure: self.environment.clone(),
-        };
+        let lambda_function = Function::new(
+            "<lambda>".to_string(),
+            params.iter().map(|param| param.lexeme.clone()).collect(),
+            Rc::clone(body),
+            self.environment.clone(),
+        );
 
         // Return the lambda as a callable Value
         Ok(Value::Callable(Rc::new(lambda_function)))

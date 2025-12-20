@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use rust_interpreter::parser::Resolver;
 
 use rust_interpreter::{AstPrinter, ControlFlow, Interpreter, Parser, scan};
 
@@ -83,11 +84,15 @@ fn main() {
             
             // Create a parser and parse the tokens into statements
             let mut parser = Parser::new(tokens.tokens);
-            let statements = parser.parse();
+            let mut statements = parser.parse();
 
             // Create an interpreter and execute the statements
             let mut interpreter = Interpreter::new();
-            interpreter.interpret(statements);
+
+            let mut resolver = Resolver::new(&mut interpreter);
+            resolver.resolve_statements(&mut statements);
+
+            interpreter.interpret(&statements);
         }
         "dbg" => {
             // Get tokens from the scanner
