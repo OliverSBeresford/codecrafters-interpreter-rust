@@ -1,9 +1,5 @@
-use std::rc::Rc;
-
 use crate::ast::expr::Expr;
 use crate::lexer::token::Token;
-
-pub type StatementRef = Rc<Statement>;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -12,8 +8,8 @@ pub enum Statement {
     },
     If {
         condition: Expr,
-        then_branch: StatementRef,
-        else_branch: Option<StatementRef>,
+        then_branch: Box<Statement>,
+        else_branch: Option<Box<Statement>>,
     },
     Print {
         expression: Expr,
@@ -24,15 +20,15 @@ pub enum Statement {
     },
     While {
         condition: Expr,
-        body: StatementRef,
+        body: Box<Statement>,
     },
     Block {
-        statements: Vec<StatementRef>,
+        statements: Vec<Statement>,
     },
     Function {
         name: Token,
         params: Vec<Token>,
-        body: Vec<StatementRef>,
+        body: Vec<Statement>,
     },
     Return {
         keyword: Token,

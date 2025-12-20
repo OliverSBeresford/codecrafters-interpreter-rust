@@ -1,4 +1,4 @@
-use crate::ast::statement::{Statement, StatementRef};
+use crate::ast::statement::Statement;
 use crate::runtime::callable::Callable;
 use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::environment::{EnvRef, Environment};
@@ -9,21 +9,21 @@ use crate::runtime::value::Value;
 pub type FunctionResult<T> = Result<T, ControlFlow>;
 
 #[derive(Debug)]
-pub struct Function {
+pub struct Function<'a> {
     pub name: String,
     pub params: Vec<String>,
-    pub body: Vec<StatementRef>,
+    pub body: &'a Vec<Statement>,
     pub closure: EnvRef,
 }
 
-impl Function {
+impl<'a> Function<'a> {
     // Create a Function from a Statement::Function
-    pub fn from_statement(stmt: StatementRef, closure: EnvRef) -> FunctionResult<Self> {
-        if let Statement::Function { name, params, body } = &*stmt {
+    pub fn from_statement(stmt: &'a Statement, closure: EnvRef) -> FunctionResult<Self> {
+        if let Statement::Function { name, params, body } = stmt {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
-                body: body.clone(),
+                body,
                 closure,
             })
         } else {
@@ -36,7 +36,7 @@ impl Function {
     }
 }
 
-impl Callable for Function {
+impl<'a> Callable<'a> for Function<'a> {
     fn arity(&self) -> usize {
         self.params.len()
     }

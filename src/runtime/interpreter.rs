@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use crate::ast::{Expr, Statement, StatementRef};
+use crate::ast::{Expr, Statement};
 use crate::lexer::token::{Literal, Token, TokenType};
 use crate::runtime::clock::Clock;
 use crate::runtime::control_flow::ControlFlow;
@@ -111,7 +111,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    pub fn execute_block(&mut self, statements: &Vec<StatementRef>, environment: EnvRef) -> InterpreterResult<Value> {
+    pub fn execute_block(&mut self, statements: &[Statement], environment: EnvRef) -> InterpreterResult<Value> {
         // Create a new environment enclosed by the current one
         let previous_environment = self.environment.clone();
         self.environment = environment;
@@ -127,7 +127,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &StatementRef, else_branch: &Option<StatementRef>) -> InterpreterResult<Value> {
+    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &Statement, else_branch: &Option<Box<Statement>>) -> InterpreterResult<Value> {
         let condition_value = self.evaluate(condition)?;
 
         // Execute the then_branch if the condition is truthy, otherwise execute the else_branch if it exists
@@ -155,7 +155,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_while_statement(&mut self, condition: &Expr, body: &StatementRef) -> InterpreterResult<Value> {
+    fn execute_while_statement(&mut self, condition: &Expr, body: &Statement) -> InterpreterResult<Value> {
         // Evaluate the condition and execute the body while the condition is truthy
         while Self::is_truthy(&self.evaluate(condition)?) {
             self.execute(body)?;
@@ -166,7 +166,7 @@ impl Interpreter {
     }
 
     // Declare and define a function
-    fn execute_function_statement(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
+    fn execute_function_statement(&mut self, statement: &Statement) -> InterpreterResult<Value> {
         // Create a Function from the statement
         let function: Function = Function::from_statement(statement.clone(), self.environment.clone())?;
 
@@ -190,14 +190,14 @@ impl Interpreter {
         Err(ControlFlow::Return(return_value))
     }
 
-    pub fn execute(&mut self, statement: &StatementRef) -> InterpreterResult<Value> {
-        match statement.as_ref() {
+    pub fn execute(&mut self, statement: &Statement) -> InterpreterResult<Value> {
+        match statement {
             Statement::Expression { expression } => self.execute_expression(expression),
             Statement::Print { expression } => self.execute_print(expression),
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
             // Execute a block statement in a new enclosed environment
             Statement::Block { statements } => {
-                self.execute_block(statements, Environment::new(Some(self.environment.clone())))
+                self.execute_block(&**statements, Environment::new(Some(self.environment.clone())))
             }
             Statement::If { condition, then_branch, else_branch } => {
                 self.execute_if_statement(condition, then_branch, else_branch)
@@ -208,7 +208,7 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<StatementRef>) {
+    pub fn interpret(&mut self, statements: &[Statement]) {
         for statement in statements {
             if let Err(ControlFlow::RuntimeError(runtime_error)) = self.execute(&statement) {
                 eprintln!("{}", runtime_error);
@@ -440,7 +440,7 @@ impl Interpreter {
         Ok(function.call(self, arg_values)?)
     }
 
-    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Vec<StatementRef>) -> InterpreterResult<Value> {
+    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Vec<Statement>) -> InterpreterResult<Value> {
         // Create a Function representing the lambda
         let lambda_function = Function {
             name: "<lambda>".to_string(),
