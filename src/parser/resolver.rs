@@ -81,12 +81,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_var_statement(&mut self, name: &mut Token, initializer: &mut Option<Expr>) -> Output {
-        self.declare(&name.lexeme)?;
+        self.declare(name)?;
         if initializer.is_some() {
             self.resolve_expression(initializer.as_mut().unwrap())?;
         }
-        self.define(&name.lexeme)?;
-
+        self.define(name)?;
         Ok(())
     }
 
@@ -121,16 +120,16 @@ impl<'a> Resolver<'a> {
 
     fn resolve_function_statement(&mut self, name: &mut Token, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>) -> Output {
         // Declare the function name
-        self.declare(&name.lexeme)?;
-        self.define(&name.lexeme)?;
+        self.declare(name)?;
+        self.define(name)?;
 
         // Begin a new scope for the function body
         self.begin_scope()?;
 
         // Bind variables for each of the parameters
         for param in params {
-            self.declare(&param.lexeme)?;
-            self.define(&param.lexeme)?;
+            self.declare(param)?;
+            self.define(param)?;
         }
         
         // Resolve the function body in its own scope
@@ -240,8 +239,13 @@ impl<'a> Resolver<'a> {
         return Ok(scope.borrow_mut().get(&name.lexeme).cloned());
     }
 
-    fn declare(&mut self, name: &String) -> Output {
+    fn declare(&mut self, name: &Token) -> Output {
         if self.scopes.is_empty() { return Ok(()) }
+
+        // Check if variable with this name already declared in this scope
+        else if self.is_declared(&name.lexeme, self.get_top()?)? {
+            return Self::error(name, "Variable with this name already declared in this scope");
+        }
 
         let current_scope = self.scopes.last().unwrap();
         current_scope.borrow_mut().insert(name.to_string(), false);
@@ -253,11 +257,11 @@ impl<'a> Resolver<'a> {
         return Ok(scope.borrow_mut().contains_key(name));
     }
 
-    fn define(&mut self, name: &String) -> Output {
+    fn define(&mut self, name: &Token) -> Output {
         if self.scopes.is_empty() { return Ok(()) }
 
         let current_scope = self.get_top()?;
-        current_scope.borrow_mut().insert(name.to_string(), true);
+        current_scope.borrow_mut().insert(name.lexeme.to_string(), true);
 
         Ok(())
     }
