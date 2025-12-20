@@ -123,6 +123,12 @@ impl<'a> Resolver<'a> {
         self.declare(name)?;
         self.define(name)?;
 
+        self.resolve_function(params, body)?;
+
+        Ok(())
+    }
+
+    fn resolve_function(&mut self, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>) -> Output {
         // Begin a new scope for the function body
         self.begin_scope()?;
 
