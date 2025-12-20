@@ -10,9 +10,16 @@ use crate::ParseError;
 pub type Lookup = RefCell<HashMap<String, bool>>;
 pub type Output = Result<(), ParseError>;
 
+#[derive(Clone, Copy, PartialEq)]
+enum FunctionType {
+    None,
+    Function,
+}
+
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<Lookup>,
+    current_function: FunctionType,
 }
 
 impl<'a> Resolver<'a> {
@@ -20,6 +27,7 @@ impl<'a> Resolver<'a> {
         Resolver {
             interpreter,
             scopes: Vec::new(),
+            current_function: FunctionType::None,
         }
     }
 
@@ -40,7 +48,7 @@ impl<'a> Resolver<'a> {
             }
             Statement::While { condition, body } => self.resolve_while_statement(condition, body),
             Statement::Function { name, params, body } => self.resolve_function_statement(name, params, body), // Declare function
-            Statement::Return { value, .. } => self.resolve_return_statement(value),
+            Statement::Return { value, keyword } => self.resolve_return_statement(value, keyword),
         }
     }
 
@@ -105,8 +113,15 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn resolve_return_statement(&mut self, value: &mut Option<Expr>) -> Output {
-        self.resolve_expression(value.as_mut().unwrap())?;
+    fn resolve_return_statement(&mut self, value: &mut Option<Expr>, keyword: &Token) -> Output {
+        // Error if return used outside of function
+        if self.current_function == FunctionType::None {
+            return Self::error(keyword, "Can't return from top-level code");
+        }
+        
+        if value.is_some() {
+            self.resolve_expression(value.as_mut().unwrap())?;
+        }
 
         Ok(())
     }
@@ -123,12 +138,16 @@ impl<'a> Resolver<'a> {
         self.declare(name)?;
         self.define(name)?;
 
-        self.resolve_function(params, body)?;
+        self.resolve_function(params, body, FunctionType::Function)?;
 
         Ok(())
     }
 
-    fn resolve_function(&mut self, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>) -> Output {
+    fn resolve_function(&mut self, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>, function_type: FunctionType) -> Output {
+        // Keep track of the enclosing function type
+        let enclosing_function = self.current_function;
+        self.current_function = function_type;
+        
         // Begin a new scope for the function body
         self.begin_scope()?;
 
@@ -144,6 +163,9 @@ impl<'a> Resolver<'a> {
         
         // End the function scope
         self.end_scope()?;
+
+        // Restore the previous function type
+        self.current_function = enclosing_function;
 
         Ok(())
     }
