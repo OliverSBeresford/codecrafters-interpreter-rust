@@ -1,7 +1,5 @@
 use std::fmt;
 use std::rc::Rc;
-use std::cell::RefCell;
-
 use crate::ast::{Expr, Statement, Depth};
 use crate::lexer::token::{Literal, Token, TokenType};
 use crate::runtime::clock::Clock;
@@ -465,12 +463,12 @@ impl Interpreter {
         Ok(function.call(self, arg_values)?)
     }
 
-    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Rc<RefCell<Vec<Statement>>>) -> InterpreterResult<Value> {
+    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Vec<Statement>) -> InterpreterResult<Value> {
         // Create a Function representing the lambda
         let lambda_function = Function::new(
             "<lambda>".to_string(),
             params.iter().map(|param| param.lexeme.clone()).collect(),
-            Rc::clone(body),
+            body.clone(),
             self.environment.clone(),
         );
 

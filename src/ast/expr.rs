@@ -1,7 +1,5 @@
 use crate::ast::statement::Statement;
 use crate::lexer::token::Token;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Depth {
@@ -9,7 +7,7 @@ pub enum Depth {
     Resolved(usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Assign {
         name: Token,
@@ -52,6 +50,6 @@ pub enum Expr {
     },
     Lambda {
         params: Vec<Token>,
-        body: Rc<RefCell<Vec<Statement>>>,
+        body: Vec<Statement>,
     },
 }

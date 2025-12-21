@@ -1,6 +1,4 @@
 use crate::ast::{Expr, Statement, Depth};
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::lexer::token::Keyword::{False, Nil, True};
 use crate::lexer::token::{Keyword, Literal, Token, TokenType};
 use crate::parser::error::ParseError;
@@ -211,7 +209,7 @@ impl Parser {
             return Self::error(&name_token, "Expect function body.");
         };
 
-        Ok(Statement::Function { name: name_token, params, body: Rc::new(RefCell::new(body)) })
+        Ok(Statement::Function { name: name_token, params, body })
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
@@ -660,6 +658,6 @@ impl Parser {
             return Self::error(&params[0], "Expect lambda body.");
         };
 
-        Ok(Expr::Lambda { params, body: Rc::new(RefCell::new(body)) })
+        Ok(Expr::Lambda { params, body })
     }
 }

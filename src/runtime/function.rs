@@ -1,6 +1,4 @@
 use crate::ast::statement::Statement;
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::runtime::callable::Callable;
 use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::environment::{EnvRef, Environment};
@@ -14,7 +12,7 @@ pub type FunctionResult<T> = Result<T, ControlFlow>;
 pub struct Function {
     name: String,
     params: Vec<String>,
-    body: Rc<RefCell<Vec<Statement>>>,
+    body: Vec<Statement>,
     closure: EnvRef,
 }
 
@@ -25,7 +23,7 @@ impl Function {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
-                body: Rc::clone(body),
+                body: body.clone(),
                 closure,
             })
         } else {
@@ -37,7 +35,7 @@ impl Function {
         }
     }
 
-    pub fn new(name: String, params: Vec<String>, body: Rc<RefCell<Vec<Statement>>>, closure: EnvRef) -> Self {
+    pub fn new(name: String, params: Vec<String>, body: Vec<Statement>, closure: EnvRef) -> Self {
         Function { name, params, body, closure }
     }
 }
@@ -58,8 +56,7 @@ impl Callable for Function {
         }
 
         // Execute the function body in the new environment, handling return values via ControlFlow
-        let borrowed = self.body.borrow();
-        match interpreter.execute_block(&*borrowed, environment) {
+        match interpreter.execute_block(&self.body, environment) {
             Ok(_) => {}
             Err(ControlFlow::Return(return_value)) => {
                 interpreter.environment = previous_environment;
