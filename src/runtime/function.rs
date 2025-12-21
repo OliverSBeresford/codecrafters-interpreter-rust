@@ -1,6 +1,4 @@
 use crate::ast::statement::Statement;
-use std::rc::Rc;
-use std::cell::RefCell;
 use crate::runtime::callable::Callable;
 use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::environment::{EnvRef, Environment};
@@ -8,24 +6,24 @@ use crate::runtime::interpreter::Interpreter;
 use crate::runtime::RuntimeError;
 use crate::runtime::value::Value;
 
-pub type FunctionResult<T> = Result<T, ControlFlow>;
+pub type FunctionResult<'a, T> = Result<T, ControlFlow<'a>>;
 
 #[derive(Debug)]
-pub struct Function {
+pub struct Function<'a> {
     name: String,
     params: Vec<String>,
-    body: Rc<RefCell<Vec<Statement>>>,
-    closure: EnvRef,
+    body: &'a [Statement],
+    closure: EnvRef<'a>,
 }
 
-impl Function {
+impl<'a> Function<'a> {
     // Create a Function from a Statement::Function
-    pub fn from_statement(stmt: &Statement, closure: EnvRef) -> FunctionResult<Self> {
+    pub fn from_statement(stmt: &'a Statement, closure: EnvRef<'a>) -> FunctionResult<'a, Self> {
         if let Statement::Function { name, params, body } = stmt {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
-                body: Rc::clone(body),
+                body,
                 closure,
             })
         } else {
@@ -37,20 +35,20 @@ impl Function {
         }
     }
 
-    pub fn new(name: String, params: Vec<String>, body: Rc<RefCell<Vec<Statement>>>, closure: EnvRef) -> Self {
+    pub fn new(name: String, params: Vec<String>, body: &'a [Statement], closure: EnvRef<'a>) -> Self {
         Function { name, params, body, closure }
     }
 }
 
-impl Callable for Function {
+impl<'a> Callable<'a> for Function<'a> {
     fn arity(&self) -> usize {
         self.params.len()
     }
 
-    fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> FunctionResult<Value> {
+    fn call(&self, interpreter: &mut Interpreter<'a>, args: Vec<Value<'a>>) -> FunctionResult<'a, Value<'a>> {
         let previous_environment = interpreter.environment.clone();
 
-        let environment: EnvRef = Environment::new(Some(self.closure.clone()));
+        let environment: EnvRef<'_> = Environment::new(Some(self.closure.clone()));
 
         // Loop through params and args simultaneously (using zip) and define them in the new environment
         for (param, arg) in self.params.iter().zip(args.into_iter()) {
@@ -58,8 +56,7 @@ impl Callable for Function {
         }
 
         // Execute the function body in the new environment, handling return values via ControlFlow
-        let borrowed = self.body.borrow();
-        match interpreter.execute_block(&*borrowed, environment) {
+        match interpreter.execute_block(self.body, environment) {
             Ok(_) => {}
             Err(ControlFlow::Return(return_value)) => {
                 interpreter.environment = previous_environment;

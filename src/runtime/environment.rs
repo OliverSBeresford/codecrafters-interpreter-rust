@@ -7,20 +7,20 @@ use crate::runtime::runtime_error::RuntimeError;
 use crate::runtime::value::Value;
 
 // Type for a reference to an Environment wrapped in Rc and RefCell for shared ownership and mutability
-pub type EnvRef = Rc<RefCell<Environment>>;
+pub type EnvRef<'a> = Rc<RefCell<Environment<'a>>>;
 
-pub type EnvResult<T> = Result<T, ControlFlow>;
+pub type EnvResult<'a, T> = Result<T, ControlFlow<'a>>;
 
 #[derive(Debug)]
-pub struct Environment {
+pub struct Environment<'a> {
     // Stores enclosing environment (if any)
-    enclosing: Option<EnvRef>,
+    enclosing: Option<EnvRef<'a>>,
 
     // Stores variable names and their associated values
-    values: HashMap<String, Value>,
+    values: HashMap<String, Value<'a>>,
 }
 
-impl Environment {
+impl<'a> Environment<'a> {
     pub fn new(enclosing: Option<EnvRef>) -> EnvRef {
         Rc::new(RefCell::new(Environment {
             enclosing,
@@ -28,11 +28,11 @@ impl Environment {
         }))
     }
 
-    pub fn define(&mut self, name: String, value: Value) {
+    pub fn define(&mut self, name: String, value: Value<'a>) {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, name: &str, line: usize) -> EnvResult<Value> {
+    pub fn get(&self, name: &str, line: usize) -> EnvResult<'a, Value<'a>> {
         // If the variable is found in the current environment, return a cloned value
         if let Some(value) = self.values.get(name) {
             return Ok(value.clone());
@@ -51,7 +51,7 @@ impl Environment {
     }
 
     /// Get a variable's value at a specific distance in the environment chain (recursive)
-    pub fn get_at(&self, distance: usize, name: &str, line: usize) -> EnvResult<Value> {
+    pub fn get_at(&self, distance: usize, name: &str, line: usize) -> EnvResult<'a, Value<'a>> {
         if distance == 0 {
             return self.get(name, line);
         }
@@ -66,7 +66,7 @@ impl Environment {
         )))
     }
 
-    pub fn assign(&mut self, name: &str, value: Value, line: usize) -> EnvResult<()> {
+    pub fn assign(&mut self, name: &str, value: Value<'a>, line: usize) -> EnvResult<'a, ()> {
         // If the variable exists in the current environment, update its value
         if self.values.contains_key(name) {
             self.values.insert(name.to_string(), value);
@@ -86,7 +86,7 @@ impl Environment {
     }
 
     /// Assign a variable's value at a specific distance in the environment chain (recursive)
-    pub fn assign_at(&mut self, distance: usize, name: &str, value: Value, line: usize) -> EnvResult<()> {
+    pub fn assign_at(&mut self, distance: usize, name: &str, value: Value<'a>, line: usize) -> EnvResult<'a, ()> {
         if distance == 0 {
             self.assign(name, value, line)?;
             

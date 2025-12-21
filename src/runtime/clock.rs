@@ -8,12 +8,12 @@ use crate::runtime::value::Value;
 #[derive(Debug)]
 pub struct Clock;
 
-impl Callable for Clock {
+impl<'a> Callable<'a> for Clock {
     fn arity(&self) -> usize {
         0
     }
 
-    fn call(&self, _interpreter: &mut Interpreter, _args: Vec<Value>) -> Result<Value, ControlFlow> {
+    fn call(&self, _interpreter: &mut Interpreter<'a>, _args: Vec<Value<'a>>) -> Result<Value<'a>, ControlFlow<'a>> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");

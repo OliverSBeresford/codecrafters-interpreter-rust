@@ -1,7 +1,5 @@
 use crate::ast::expr::Expr;
 use crate::lexer::token::Token;
-use std::rc::Rc;
-use std::cell::RefCell;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -30,7 +28,7 @@ pub enum Statement {
     Function {
         name: Token,
         params: Vec<Token>,
-        body: Rc<RefCell<Vec<Statement>>>,
+        body: Vec<Statement>,
     },
     Return {
         keyword: Token,

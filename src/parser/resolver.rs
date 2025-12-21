@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::cell::RefCell;
-use std::rc::Rc;
 use crate::Interpreter;
 use crate::Statement;
 use crate::Expr;
@@ -17,15 +16,15 @@ enum FunctionType {
     Function,
 }
 
-pub struct Resolver<'a> {
-    interpreter: &'a mut Interpreter,
+pub struct Resolver<'r, 'a> {
+    interpreter: &'r mut Interpreter<'a>,
     scopes: Vec<Lookup>,
     current_function: FunctionType,
 }
 
-impl<'a> Resolver<'a> {
+impl<'r, 'a> Resolver<'r, 'a> {
     /// Create a new Resolver with a reference to the interpreter
-    pub fn new(interpreter: &'a mut Interpreter) -> Self {
+    pub fn new(interpreter: &'r mut Interpreter<'a>) -> Self {
         Resolver {
             interpreter,
             scopes: Vec::new(),
@@ -153,7 +152,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolve a function statement by declaring its name and resolving its parameters and body
-    fn resolve_function_statement(&mut self, name: &mut Token, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>) -> Output {
+    fn resolve_function_statement(&mut self, name: &mut Token, params: &mut Vec<Token>, body: &mut Vec<Statement>) -> Output {
         // Declare the function name
         self.declare(name)?;
         self.define(name)?;
@@ -164,7 +163,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolve a function by creating a new scope for its parameters and body
-    fn resolve_function(&mut self, params: &mut Vec<Token>, body: &mut Rc<RefCell<Vec<Statement>>>, function_type: FunctionType) -> Output {
+    fn resolve_function(&mut self, params: &mut Vec<Token>, body: &mut Vec<Statement>, function_type: FunctionType) -> Output {
         // Keep track of the enclosing function type
         let enclosing_function = self.current_function;
         self.current_function = function_type;
@@ -179,8 +178,7 @@ impl<'a> Resolver<'a> {
         }
         
         // Resolve the function body in its own scope
-        let mut borrowed = body.borrow_mut();
-        self.resolve_block(&mut *borrowed)?;
+        self.resolve_block(body)?;
         
         // End the function scope
         self.end_scope()?;

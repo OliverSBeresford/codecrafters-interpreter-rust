@@ -1,20 +1,19 @@
 use std::fmt;
 use std::rc::Rc;
-use std::cell::RefCell;
-
 use crate::ast::{Expr, Statement, Depth};
 use crate::lexer::token::{Literal, Token, TokenType};
 use crate::runtime::clock::Clock;
-use crate::runtime::control_flow::ControlFlow;
+use crate::runtime::runtime_error::RuntimeError;
 use crate::runtime::environment::{EnvRef, Environment};
 use crate::runtime::function::Function;
 use crate::runtime::callable::Callable;
-use crate::runtime::runtime_error::RuntimeError;
 use crate::runtime::value::Value;
+use crate::runtime::control_flow::ControlFlow;
 
-pub type InterpreterResult<T> = Result<T, ControlFlow>;
+pub type RuntimeResult<T> = Result<T, RuntimeError>;
+pub type ExecResult<'a, T> = Result<T, ControlFlow<'a>>;
 
-impl fmt::Display for Value {
+impl<'a> fmt::Display for Value<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let out = match self {
             Value::Integer(i) => format!("{}", i),
@@ -32,12 +31,12 @@ impl fmt::Display for Value {
     }
 }
 
-pub struct Interpreter {
-    pub globals: EnvRef,
-    pub environment: EnvRef,
+pub struct Interpreter<'a> {
+    pub globals: EnvRef<'a>,
+    pub environment: EnvRef<'a>,
 }
 
-impl Interpreter {
+impl<'a> Interpreter<'a> {
     pub fn new() -> Self {
         let globals = Environment::new(None);
         let interpreter = Interpreter {
@@ -62,45 +61,48 @@ impl Interpreter {
     }
 
     // Report an evaluation error
-    fn error<T>(token: &Token, message: &str) -> InterpreterResult<T> {
+    fn error<T>(token: &Token, message: &str) -> RuntimeResult<T> {
         if token.token_type == TokenType::Eof {
-            Err(ControlFlow::RuntimeError(RuntimeError::new(
+            Err(RuntimeError::new(
                 token.line,
                 format!("Error at end: {}", message),
-            )))
+            ))
         } else {
-            Err(ControlFlow::RuntimeError(RuntimeError::new(
+            Err(RuntimeError::new(
                 token.line,
                 format!("Error at '{}': {}", token.lexeme, message),
-            )))
+            ))
         }
     }
 
-    fn as_number(operator: &Token, v: &Value) -> InterpreterResult<f64> {
+    fn as_number(operator: &Token, v: Value) -> RuntimeResult<f64> {
         match v {
-            Value::Float(n) => Ok(*n),
-            Value::Integer(i) => Ok(*i as f64),
-            _ => Self::error(operator, &format!("Operand must be a number for {}", operator.lexeme)),
+            Value::Float(n) => Ok(n),
+            Value::Integer(i) => Ok(i as f64),
+            _ => Err(RuntimeError::new(
+                operator.line,
+                format!("Operand must be a number for {}", operator.lexeme),
+            )),
         }
     }
 
     pub fn resolve(&mut self, expression: &mut Expr, depth: usize) {
         if let Expr::Variable { depth: expr_depth, .. } = expression {
-            *expr_depth = Depth::Resolved(depth);
+            expr_depth.set(Depth::Resolved(depth));
         } else if let Expr::Assign { depth: expr_depth, .. } = expression {
-            *expr_depth = Depth::Resolved(depth);
+            expr_depth.set(Depth::Resolved(depth));
         }
     }
 
-    pub fn evaluate(&mut self, expression: &Expr) -> InterpreterResult<Value> {
+    pub fn evaluate(&mut self, expression: &'a Expr) -> ExecResult<'a, Value<'a>> {
         match expression {
             Expr::Binary { left, operator, right } => self.visit_binary(left, operator, right),
             Expr::Literal { value } => self.visit_literal(value),
             Expr::Grouping { expression } => self.visit_grouping(expression),
             Expr::Unary { operator, right } => self.visit_unary(operator, right),
             // Handle variable expressions
-            Expr::Variable { name, depth } => self.lookup_variable(name, *depth),
-            Expr::Assign { name, value, depth } => self.assign_variable(name, value, *depth),
+            Expr::Variable { name, depth } => self.lookup_variable(name, depth.get()),
+            Expr::Assign { name, value, depth } => self.assign_variable(name, value, depth.get()),
             Expr::LogicOr { left, right } => self.logic_or(left, right),
             Expr::LogicAnd { left, right } => self.logic_and(left, right),
             Expr::Call { callee, paren, arguments } => self.call_expr(callee, paren, arguments),
@@ -108,17 +110,17 @@ impl Interpreter {
         }
     }
 
-    fn execute_expression(&mut self, expression: &Expr) -> InterpreterResult<Value> {
+    fn execute_expression(&mut self, expression: &'a Expr) -> ExecResult<'a, Value<'a>> {
         self.evaluate(expression)
     }
 
-    fn execute_print(&mut self, expression: &Expr) -> InterpreterResult<Value> {
+    fn execute_print(&mut self, expression: &'a Expr) -> ExecResult<'a, Value<'a>> {
         let value = self.evaluate(expression)?;
         println!("{}", value);
         Ok(Value::Nil)
     }
 
-    pub fn execute_block(&mut self, statements: &[Statement], environment: EnvRef) -> InterpreterResult<Value> {
+    pub fn execute_block(&mut self, statements: &'a [Statement], environment: EnvRef<'a>) -> ExecResult<'a, Value<'a>> {
         // Create a new environment enclosed by the current one
         let previous_environment = self.environment.clone();
         self.environment = environment;
@@ -134,10 +136,8 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_if_statement(&mut self, condition: &Expr, then_branch: &Statement, else_branch: &Option<Box<Statement>>) -> InterpreterResult<Value> {
+    fn execute_if_statement(&mut self, condition: &'a Expr, then_branch: &'a Statement, else_branch: &'a Option<Box<Statement>>) -> ExecResult<'a, Value<'a>> {
         let condition_value = self.evaluate(condition)?;
-
-        // Execute the then_branch if the condition is truthy, otherwise execute the else_branch if it exists
         if Self::is_truthy(&condition_value) {
             self.execute(then_branch)
         } else if let Some(else_stmt) = else_branch {
@@ -147,7 +147,7 @@ impl Interpreter {
         }
     }
 
-    fn execute_var_statement(&mut self, name: &Token, initializer: &Option<Expr>) -> InterpreterResult<Value> {
+    fn execute_var_statement(&mut self, name: &Token, initializer: &'a Option<Expr>) -> ExecResult<'a, Value<'a>> {
         // Evaluate the initializer expression if it exists, otherwise use nil
         let mut value: Value = Value::Nil;
         if let Some(init_expr) = initializer {
@@ -162,18 +162,15 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_while_statement(&mut self, condition: &Expr, body: &Statement) -> InterpreterResult<Value> {
-        // Evaluate the condition and execute the body while the condition is truthy
+    fn execute_while_statement(&mut self, condition: &'a Expr, body: &'a Statement) -> ExecResult<'a, Value<'a>> {
         while Self::is_truthy(&self.evaluate(condition)?) {
             self.execute(body)?;
         }
-
-        // Doesn't return anything
         Ok(Value::Nil)
     }
 
     // Declare and define a function
-    fn execute_function_statement(&mut self, statement: &Statement) -> InterpreterResult<Value> {
+    fn execute_function_statement(&mut self, statement: &'a Statement) -> ExecResult<'a, Value<'a>> {
         // Create a Function from the statement
         let function: Function = Function::from_statement(statement, self.environment.clone())?;
 
@@ -185,8 +182,7 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
-    fn execute_return_statement(&mut self, _keyword: &Token, value: &Option<Expr>) -> InterpreterResult<Value> {
-        // Evaluate the return value expression if it exists, otherwise use nil
+    fn execute_return_statement(&mut self, _keyword: &Token, value: &'a Option<Expr>) -> ExecResult<'a, Value<'a>> {
         let return_value = if let Some(value_expr) = value {
             self.evaluate(value_expr)?
         } else {
@@ -197,12 +193,11 @@ impl Interpreter {
         Err(ControlFlow::Return(return_value))
     }
 
-    pub fn execute(&mut self, statement: &Statement) -> InterpreterResult<Value> {
+    pub fn execute(&mut self, statement: &'a Statement) -> ExecResult<'a, Value<'a>> {
         match statement {
             Statement::Expression { expression } => self.execute_expression(expression),
             Statement::Print { expression } => self.execute_print(expression),
             Statement::Var { name, initializer } => self.execute_var_statement(name, initializer),
-            // Execute a block statement in a new enclosed environment
             Statement::Block { statements } => {
                 self.execute_block(&statements, Environment::new(Some(self.environment.clone())))
             }
@@ -210,12 +205,12 @@ impl Interpreter {
                 self.execute_if_statement(condition, then_branch, else_branch)
             }
             Statement::While { condition, body } => self.execute_while_statement(condition, body),
-            Statement::Function { .. } => self.execute_function_statement(statement), // Declare function
+            Statement::Function { .. } => self.execute_function_statement(statement),
             Statement::Return { keyword, value } => self.execute_return_statement(keyword, value),
         }
     }
 
-    pub fn interpret(&mut self, statements: &[Statement]) {
+    pub fn interpret(&mut self, statements: &'a [Statement]) {
         for statement in statements {
             if let Err(ControlFlow::RuntimeError(runtime_error)) = self.execute(&statement) {
                 eprintln!("{}", runtime_error);
@@ -224,7 +219,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_binary(&mut self, left: &Expr, operator: &Token, right: &Expr) -> InterpreterResult<Value> {
+    fn visit_binary(&mut self, left: &'a Expr, operator: &Token, right: &'a Expr) -> ExecResult<'a, Value<'a>> {
         let left_value = self.evaluate(left)?;
         let right_value = self.evaluate(right)?;
         let non_numeric = !matches!(left_value, Value::Float(_) | Value::Integer(_))
@@ -237,86 +232,86 @@ impl Interpreter {
                 // Handle string concatenation
                 if non_numeric {
                     let (Value::Str(str_left), Value::Str(str_right)) = (left_value, right_value) else {
-                        return Self::error(operator, "Operands must be two numbers or two strings for '+'");
+                        return Self::error(operator, "Operands must be two numbers or two strings for '+'")?;
                     };
                     return Ok(Value::Str(format!("{}{}", str_left, str_right)));
                 }
                 // Handle numeric addition
                 else if either_floating {
                     return Ok(Value::Float(
-                        Self::as_number(operator, &left_value)?
-                            + Self::as_number(operator, &right_value)?,
+                        Self::as_number(operator, left_value)?
+                            + Self::as_number(operator, right_value)?,
                     ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
-                        return Self::error(operator, "Operands must be two numbers or two strings for '+'");
+                        return Self::error(operator, "Operands must be two numbers or two strings for '+'")?;
                     };
                     return Ok(Value::Integer(num_left + num_right));
                 }
             }
             TokenType::Minus => {
                 if non_numeric {
-                    return Self::error(operator, "Operands must be two numbers for '-'");
+                    return Self::error(operator, "Operands must be two numbers for '-'")?;
                 } else if either_floating {
                     return Ok(Value::Float(
-                        Self::as_number(operator, &left_value)?
-                            - Self::as_number(operator, &right_value)?,
+                        Self::as_number(operator, left_value)?
+                            - Self::as_number(operator, right_value)?,
                     ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
-                        return Self::error(operator, "Operands must be two integers for '-'");
+                        return Self::error(operator, "Operands must be two integers for '-'")?;
                     };
                     return Ok(Value::Integer(num_left - num_right));
                 }
             }
             TokenType::Star => {
                 if non_numeric {
-                    return Self::error(operator, "Operands must be two numbers for '*'");
+                    return Self::error(operator, "Operands must be two numbers for '*'")?;
                 } else if either_floating {
                     return Ok(Value::Float(
-                        Self::as_number(operator, &left_value)?
-                            * Self::as_number(operator, &right_value)?,
+                        Self::as_number(operator, left_value)?
+                            * Self::as_number(operator, right_value)?,
                     ));
                 } else {
                     let (Value::Integer(num_left), Value::Integer(num_right)) = (left_value, right_value) else {
-                        return Self::error(operator, "Operands must be two integers for '*'");
+                        return Self::error(operator, "Operands must be two integers for '*'")?;
                     };
                     return Ok(Value::Integer(num_left * num_right));
                 }
             }
             TokenType::Slash => {
                 if non_numeric {
-                    return Self::error(operator, "Operands must be two numbers for '/'");
+                    return Self::error(operator, "Operands must be two numbers for '/'")?;
                 }
                 Ok(Value::Float(
-                    Self::as_number(operator, &left_value)? / Self::as_number(operator, &right_value)?,
+                    Self::as_number(operator, left_value)? / Self::as_number(operator, right_value)?,
                 ))
             }
             TokenType::Greater => {
                 let (num_left, num_right) = (
-                    Self::as_number(operator, &left_value)?,
-                    Self::as_number(operator, &right_value)?,
+                    Self::as_number(operator, left_value)?,
+                    Self::as_number(operator, right_value)?,
                 );
                 Ok(Value::Bool(num_left > num_right))
             }
             TokenType::GreaterEqual => {
                 let (num_left, num_right) = (
-                    Self::as_number(operator, &left_value)?,
-                    Self::as_number(operator, &right_value)?,
+                    Self::as_number(operator, left_value)?,
+                    Self::as_number(operator, right_value)?,
                 );
                 Ok(Value::Bool(num_left >= num_right))
             }
             TokenType::Less => {
                 let (num_left, num_right) = (
-                    Self::as_number(operator, &left_value)?,
-                    Self::as_number(operator, &right_value)?,
+                    Self::as_number(operator, left_value)?,
+                    Self::as_number(operator, right_value)?,
                 );
                 Ok(Value::Bool(num_left < num_right))
             }
             TokenType::LessEqual => {
                 let (num_left, num_right) = (
-                    Self::as_number(operator, &left_value)?,
-                    Self::as_number(operator, &right_value)?,
+                    Self::as_number(operator, left_value)?,
+                    Self::as_number(operator, right_value)?,
                 );
                 Ok(Value::Bool(num_left <= num_right))
             }
@@ -325,11 +320,11 @@ impl Interpreter {
             _ => Self::error(
                 operator,
                 &format!("Unsupported binary operator: {:?}", operator.token_type),
-            ),
+            )?,
         }
     }
 
-    fn visit_literal(&mut self, value: &Token) -> InterpreterResult<Value> {
+    fn visit_literal(&mut self, value: &Token) -> ExecResult<'a, Value<'a>> {
         // Convert the token's literal to a Value
         let v = match value.literal.as_ref() {
             Some(Literal::Number(n)) => {
@@ -349,11 +344,11 @@ impl Interpreter {
     }
 
     // Evaluate the inner expression
-    fn visit_grouping(&mut self, expression: &Expr) -> InterpreterResult<Value> {
+    fn visit_grouping(&mut self, expression: &'a Expr) -> ExecResult<'a, Value<'a>> {
         self.evaluate(expression)
     }
 
-    fn visit_unary(&mut self, operator: &Token, right: &Expr) -> InterpreterResult<Value> {
+    fn visit_unary(&mut self, operator: &Token, right: &'a Expr) -> ExecResult<'a, Value<'a>> {
         // Evaluate the right-hand side expression
         let right_value = self.evaluate(right)?;
 
@@ -366,7 +361,7 @@ impl Interpreter {
                 } else if let Value::Integer(num) = right_value {
                     return Ok(Value::Integer(-num));
                 } else {
-                    return Self::error(operator, "Operand must be a number for unary '-'");
+                    return Self::error(operator, "Operand must be a number for unary '-'")?;
                 }
             }
             // Return the logical NOT of the truthiness of the right-hand side
@@ -374,19 +369,18 @@ impl Interpreter {
             _ => Self::error(
                 operator,
                 &format!("Unsupported unary operator: {:?}", operator.token_type),
-            ),
+            )?,
         }
     }
 
-    fn lookup_variable(&mut self, name: &Token, depth: Depth) -> InterpreterResult<Value> {
+    fn lookup_variable(&mut self, name: &Token, depth: Depth) -> ExecResult<'a, Value<'a>> {
         match depth {
             Depth::Unresolved => self.globals.borrow().get(&name.lexeme, name.line),
             Depth::Resolved(distance) => self.environment.borrow().get_at(distance, &name.lexeme, name.line),
         }
     }
 
-    fn assign_variable(&mut self, name: &Token, value_expr: &Expr, depth: Depth) -> InterpreterResult<Value> {
-        // Evaluate the value expression
+    fn assign_variable(&mut self, name: &Token, value_expr: &'a Expr, depth: Depth) -> ExecResult<'a, Value<'a>> {
         let evaluated_value = self.evaluate(value_expr)?;
 
         // Assign the value to the variable at the correct depth
@@ -407,7 +401,7 @@ impl Interpreter {
         Ok(evaluated_value)
     }
 
-    fn logic_or(&mut self, left: &Expr, right: &Expr) -> InterpreterResult<Value> {
+    fn logic_or(&mut self, left: &'a Expr, right: &'a Expr) -> ExecResult<'a, Value<'a>> {
         // Evaluate the left expression
         let left_value = self.evaluate(left)?;
 
@@ -421,7 +415,7 @@ impl Interpreter {
         }
     }
 
-    fn logic_and(&mut self, left: &Expr, right: &Expr) -> InterpreterResult<Value> {
+    fn logic_and(&mut self, left: &'a Expr, right: &'a Expr) -> ExecResult<'a, Value<'a>> {
         // Evaluate the left expression
         let left_value = self.evaluate(left)?;
 
@@ -435,11 +429,14 @@ impl Interpreter {
         }
     }
 
-    fn call_expr(&mut self, callee: &Expr, paren: &Token, arguments: &Vec<Expr>) -> InterpreterResult<Value> {
+    fn call_expr(&mut self, callee: &'a Expr, paren: &Token, arguments: &'a Vec<Expr>) -> ExecResult<'a, Value<'a>> {
         // Evaluate the callee expression to get the function to call (usually an identifier)
-        let Value::Callable(function) = self.evaluate(callee)? else {
+        let callee_value = self.evaluate(callee)?;
+        let function = if let Value::Callable(func) = &callee_value {
+            func.clone()
+        } else {
             // Not a callable
-            return Self::error(paren, "Can only call functions and classes.");
+            return Self::error(paren, "Can only call functions and classes.")?;
         };
 
         // Evaluate each argument expression
@@ -458,19 +455,19 @@ impl Interpreter {
                     function.arity(),
                     arg_values.len()
                 ),
-            );
+            )?;
         }
 
-        // Call the function
-        Ok(function.call(self, arg_values)?)
+        // Call the function and return the result
+        function.call(self, arg_values)
     }
 
-    fn lambda_expression(&mut self, params: &Vec<Token>, body: &Rc<RefCell<Vec<Statement>>>) -> InterpreterResult<Value> {
+    fn lambda_expression(&mut self, params: &Vec<Token>, body: &'a Vec<Statement>) -> ExecResult<'a, Value<'a>> {
         // Create a Function representing the lambda
         let lambda_function = Function::new(
             "<lambda>".to_string(),
             params.iter().map(|param| param.lexeme.clone()).collect(),
-            Rc::clone(body),
+            body.as_slice(),
             self.environment.clone(),
         );
 
