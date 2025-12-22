@@ -468,6 +468,7 @@ impl Interpreter {
         let lambda_function = Function::new(
             "<lambda>".to_string(),
             params.iter().map(|param| param.lexeme.clone()).collect(),
+            // This clones the body statements, which is inefficient but acceptable for this context
             body.clone(),
             self.environment.clone(),
         );

@@ -23,6 +23,7 @@ impl Function {
             Ok(Function {
                 name: name.lexeme.clone(),
                 params: params.iter().map(|param| param.lexeme.clone()).collect(),
+                // This clones the body statements, which is inefficient but acceptable for this context (see other branch for version without clone)
                 body: body.clone(),
                 closure,
             })
