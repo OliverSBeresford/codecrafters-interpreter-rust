@@ -5,5 +5,5 @@ pub mod runtime;
 
 pub use ast::{AstPrinter, Expr, Statement};
 pub use lexer::{scan, Keyword, Literal, Token, TokenArray, TokenType};
-pub use parser::{ParseError, Parser};
+pub use parser::{ParseError, Parser, Resolver};
 pub use runtime::{ControlFlow, Interpreter, Value};
