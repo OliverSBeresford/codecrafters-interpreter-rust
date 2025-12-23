@@ -1,6 +1,7 @@
 use std::fmt;
 
 // Define a RuntimeError struct to represent runtime errors during interpretation
+#[derive(Debug)]
 pub struct RuntimeError {
     pub line: usize,
     pub message: String,
