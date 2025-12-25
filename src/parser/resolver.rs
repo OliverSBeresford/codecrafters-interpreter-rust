@@ -6,6 +6,7 @@ use crate::Expr;
 use crate::Token;
 use crate::ParseError;
 
+/// Type alias for a scope lookup table (maps variable names to defined status)
 pub type Lookup = RefCell<HashMap<String, bool>>;
 pub type Output = Result<(), ParseError>;
 
