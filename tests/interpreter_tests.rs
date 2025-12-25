@@ -1,5 +1,5 @@
 use rust_interpreter::{Interpreter, Parser, Value, scan};
-use rust_interpreter::runtime::{Callable, EnvRef, Environment, Function, control_flow};
+use rust_interpreter::runtime::{Callable, EnvRef, Environment, Function};
 use rust_interpreter::Expr;
 use rust_interpreter::ast::Statement;
 use rust_interpreter::Resolver;
