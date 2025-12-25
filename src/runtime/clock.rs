@@ -5,6 +5,7 @@ use crate::runtime::control_flow::ControlFlow;
 use crate::runtime::interpreter::Interpreter;
 use crate::runtime::value::Value;
 
+/// A native function that returns the current time in seconds since the Unix epoch.
 #[derive(Debug)]
 pub struct Clock;
 
