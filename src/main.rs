@@ -12,9 +12,11 @@ fn main() {
         return;
     }
 
+    // The command to execute: tokenize, parse, evaluate, run, dbg
     let command = &args[1];
     let filename = &args[2];
 
+    // Read the file contents into a string
     let file_contents = match fs::read_to_string(filename) {
         Ok(file_string) => file_string,
         Err(error_message) => {
@@ -24,6 +26,7 @@ fn main() {
     };
 
     match command.as_str() {
+        // Tokenize the input file and print the tokens
         "tokenize" => {
             if file_contents.is_empty() {
                 println!("EOF  null");
@@ -35,6 +38,7 @@ fn main() {
             // Tokenize the input and print the tokens
             print!("{}", tokens); 
         }
+        // Parse the input file and print the AST
         "parse" => {
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
@@ -54,6 +58,7 @@ fn main() {
                 }
             }
         }
+        // Evaluate the input file and print the result
         "evaluate" => {
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
@@ -78,6 +83,7 @@ fn main() {
             // Print the result of the evaluation
             println!("{}", result);
         }
+        // Run the input file as a series of statements
         "run" => {
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
@@ -94,6 +100,7 @@ fn main() {
 
             interpreter.interpret(&statements);
         }
+        // Debug: Print the tokens and parsed statements AST
         "dbg" => {
             // Get tokens from the scanner
             let tokens = scan(&file_contents);
