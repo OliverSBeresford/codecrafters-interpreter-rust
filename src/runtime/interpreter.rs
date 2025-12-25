@@ -195,6 +195,7 @@ impl Interpreter {
         Err(ControlFlow::Return(return_value))
     }
 
+    // Execute a single statement
     pub fn execute(&mut self, statement: &Statement) -> InterpreterResult<Value> {
         match statement {
             Statement::Expression { expression } => self.execute_expression(expression),
@@ -213,6 +214,7 @@ impl Interpreter {
         }
     }
 
+    // Interpret (run) a series of statements (can be used for the whole program or a block)
     pub fn interpret(&mut self, statements: &[Statement]) {
         for statement in statements {
             if let Err(ControlFlow::RuntimeError(runtime_error)) = self.execute(&statement) {
