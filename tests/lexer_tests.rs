@@ -18,7 +18,7 @@ fn tokenize_print_number_semicolon() {
 
 #[test]
 fn tokenize_string_literal() {
-    let input = "\"hello\"";
+    let input = "\"hello\"\n\n";
     let tokens = scan(input);
 
     // Make sure it's just string, EOF
